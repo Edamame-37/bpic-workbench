@@ -1,0 +1,10 @@
+[project]
+name = "bpic-workbench"
+version = "0.1.0"
+description = "Desktop workbench for BPIC17 event-log analysis"
+requires-python = ">=3.13,<3.14"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
