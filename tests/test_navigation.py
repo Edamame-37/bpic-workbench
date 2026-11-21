@@ -1,4 +1,4 @@
-"""Tests for the persistent Disco-inspired application navigation."""
+"""Tests for the Disco-inspired application navigation."""
 
 from PySide6.QtWidgets import QApplication
 import pytest
