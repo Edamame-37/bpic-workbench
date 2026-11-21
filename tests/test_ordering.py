@@ -1,4 +1,4 @@
-"""A4 - Uji Exercise 11.22 dan logika trace Case Explorer."""
+"""Uji urutan Cancel-Accept dan logika trace Penelusuran Kasus."""
 
 import pandas as pd
 import pytest

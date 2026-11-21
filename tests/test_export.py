@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from src.core.export import EXPECTED_EXERCISE_IDS, export_results
+from src.core.export import EXPECTED_ANALYSIS_IDS, export_results
 from src.core.result import AnalysisResult
 
 
@@ -74,7 +74,7 @@ def complete_results() -> list[AnalysisResult]:
             case_ids=["0001"] if exercise_id not in {"11.7 A", "11.7 B"} else ["0001", "0002"],
             evidence=evidence_by_id.get(exercise_id),
         )
-        for exercise_id in EXPECTED_EXERCISE_IDS
+        for exercise_id in EXPECTED_ANALYSIS_IDS
     ]
 
 
@@ -90,11 +90,11 @@ def test_export_writes_three_readable_csv_files(tmp_path: Path) -> None:
     )
     assert all(path.is_file() for path in paths.all())
 
-    summary = pd.read_csv(paths.summary, dtype={"exercise_id": "string"})
-    assert summary["exercise_id"].tolist() == list(EXPECTED_EXERCISE_IDS)
+    summary = pd.read_csv(paths.summary, dtype={"analysis_id": "string"})
+    assert summary["analysis_id"].tolist() == list(EXPECTED_ANALYSIS_IDS)
     assert len(summary) == 8
     assert {
-        "exercise_id",
+        "analysis_id",
         "rule_description",
         "count",
         "denominator",
@@ -110,7 +110,7 @@ def test_export_writes_three_readable_csv_files(tmp_path: Path) -> None:
     evidence = pd.read_csv(paths.evidence, dtype="string")
     assert "0001" in evidence["case_id"].tolist()
     assert {
-        "exercise_id",
+        "analysis_id",
         "case_id",
         "evidence_type",
         "_row_id",
@@ -135,8 +135,8 @@ def test_unavailable_result_exports_blank_answer_and_reason(tmp_path: Path) -> N
     )
 
     paths = export_results(results, tmp_path)
-    summary = pd.read_csv(paths.summary, dtype={"exercise_id": "string"})
-    row = summary.loc[summary["exercise_id"] == "11.15"].iloc[0]
+    summary = pd.read_csv(paths.summary, dtype={"analysis_id": "string"})
+    row = summary.loc[summary["analysis_id"] == "11.15"].iloc[0]
 
     assert row["status"] == "unavailable"
     assert row["notes"] == "Lifecycle tidak tersedia."
@@ -148,7 +148,7 @@ def test_unavailable_result_exports_blank_answer_and_reason(tmp_path: Path) -> N
     "mutate, expected_message",
     [
         (lambda results: results[:-1], "Expected exactly eight"),
-        (lambda results: [*results, results[0]], "Duplicate exercise"),
+        (lambda results: [*results, results[0]], "Duplicate analysis"),
     ],
 )
 def test_export_rejects_incomplete_or_duplicate_results(

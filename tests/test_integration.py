@@ -119,7 +119,7 @@ def test_import_analyze_explore_and_invalid_dataset_reset(tmp_path: Path) -> Non
         assert window.export_panel.last_export is not None
         summary = pd.read_csv(window.export_panel.last_export.summary)
         assert len(summary) == 8
-        assert set(summary["exercise_id"].astype(str)) == {
+        assert set(summary["analysis_id"].astype(str)) == {
             "11.7 A",
             "11.7 B",
             "11.7 C",
