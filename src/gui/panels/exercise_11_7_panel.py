@@ -1,18 +1,28 @@
-from collections.abc import Callable
+"""GUI panel for BPIC17 Exercise 11.7 A-E."""
 
-from PySide6.QtCore import Signal
+from collections.abc import Callable, Iterable
+
+from PySide6.QtCore import (
+    QAbstractTableModel,
+    QModelIndex,
+    QSortFilterProxyModel,
+    Qt,
+    Signal,
+)
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QPushButton,
+    QTableView,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
 
-from src.core.event_store import EventStore
+from src.core.event_store import CASE_ID_COLUMN, ROW_ID_COLUMN, EventStore
 from src.core.ex_11_7 import run_11_7
 from src.core.result import AnalysisResult
 
@@ -35,14 +45,62 @@ Runner = Callable[
 
 
 def format_days(value: float | None) -> str:
-    """Format mean cycle time untuk tampilan GUI."""
+    """Format mean cycle time for display without changing stored precision."""
+
     return "N/A" if value is None else f"{value:.4f}"
 
 
-class Exercise117Panel(QWidget):
-    """Panel GUI untuk hasil Exercise 11.7 A-E."""
+class CaseListModel(QAbstractTableModel):
+    """Lightweight case-ID model suitable for large result sets."""
 
-    open_case = Signal(str)
+    def __init__(self) -> None:
+        super().__init__()
+        self._case_ids: list[str] = []
+
+    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return 0 if parent.isValid() else len(self._case_ids)
+
+    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+        return 0 if parent.isValid() else 1
+
+    def data(
+        self,
+        index: QModelIndex,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> str | None:
+        if not index.isValid() or role != Qt.ItemDataRole.DisplayRole:
+            return None
+        return self._case_ids[index.row()]
+
+    def headerData(
+        self,
+        section: int,
+        orientation: Qt.Orientation,
+        role: int = Qt.ItemDataRole.DisplayRole,
+    ) -> str | None:
+        if (
+            role == Qt.ItemDataRole.DisplayRole
+            and orientation == Qt.Orientation.Horizontal
+            and section == 0
+        ):
+            return "Case ID"
+        return None
+
+    def set_case_ids(self, case_ids: Iterable[object]) -> None:
+        self.beginResetModel()
+        self._case_ids = [str(case_id) for case_id in case_ids]
+        self.endResetModel()
+
+    def case_id_at(self, row: int) -> str | None:
+        if 0 <= row < len(self._case_ids):
+            return self._case_ids[row]
+        return None
+
+
+class Exercise117Panel(QWidget):
+    """Present five Exercise 11.7 results from the active EventStore."""
+
+    open_case_requested = Signal(str, list)
 
     def __init__(self, runner: Runner | None = None) -> None:
         super().__init__()
@@ -54,7 +112,6 @@ class Exercise117Panel(QWidget):
         self._running = False
 
         self.status = QLabel("Belum ada dataset aktif.")
-
         self.run_button = QPushButton("Jalankan 11.7 A-E")
         self.reset_button = QPushButton("Reset hasil")
 
@@ -69,19 +126,34 @@ class Exercise117Panel(QWidget):
         self.search = QLineEdit()
         self.search.setPlaceholderText("Cari case ID...")
 
-        self.cases = QTableWidget(0, 1)
-        self.cases.setHorizontalHeaderLabels(["Case ID"])
+        self._case_model = CaseListModel()
+        self._case_filter = QSortFilterProxyModel(self)
+        self._case_filter.setSourceModel(self._case_model)
+        self._case_filter.setFilterCaseSensitivity(
+            Qt.CaseSensitivity.CaseInsensitive
+        )
+        self._case_filter.setFilterKeyColumn(0)
+
+        self.cases = QTableView()
+        self.cases.setModel(self._case_filter)
+        self.cases.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.cases.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection
+        )
+        self.cases.setSortingEnabled(True)
 
         self.open_button = QPushButton("Buka kasus")
         self.open_button.setEnabled(False)
 
-        top = QHBoxLayout()
-        top.addWidget(self.run_button)
-        top.addWidget(self.reset_button)
+        controls = QHBoxLayout()
+        controls.addWidget(self.run_button)
+        controls.addWidget(self.reset_button)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.status)
-        layout.addLayout(top)
+        layout.addLayout(controls)
         for widget in (
             self.summary,
             self.rule,
@@ -95,21 +167,24 @@ class Exercise117Panel(QWidget):
         self.reset_button.clicked.connect(self.reset)
         self.summary.itemSelectionChanged.connect(self._show_selected)
         self.search.textChanged.connect(self._filter_cases)
-        self.cases.itemSelectionChanged.connect(self._update_open_button)
+        self.cases.selectionModel().selectionChanged.connect(
+            self._update_open_button
+        )
         self.open_button.clicked.connect(self._emit_open_case)
 
         self.reset()
 
     def set_store(self, store: EventStore | None) -> None:
-        """Dipanggil saat dataset diimpor/diganti; hasil dataset lama dibuang."""
+        """Replace the active dataset and discard results from the old dataset."""
+
         self._store = store
         self.reset()
 
     def run(self) -> None:
-        """Jalankan analisis; gunakan runner A5 jika tersedia."""
+        """Run the analysis through the shared runner when one is available."""
+
         if self._running:
             return
-
         if self._store is None:
             self.status.setText("Impor file XES terlebih dahulu.")
             return
@@ -123,20 +198,15 @@ class Exercise117Panel(QWidget):
         self.status.setText("Menghitung...")
 
         def job() -> list[AnalysisResult]:
-            # Exception ditangkap di job agar dapat dilaporkan melalui callback
-            # yang sama, tanpa mengubah kontrak runner A5.
             try:
                 return run_11_7(store)
-            except Exception as exc:
-                error_holder.append(exc)
+            except Exception as error:
+                error_holder.append(error)
                 return []
 
         def on_done(results: list[AnalysisResult]) -> None:
-            # Abaikan hasil worker lama jika dataset telah diganti atau panel
-            # telah di-reset saat worker masih berjalan.
             if generation != self._generation:
                 return
-
             if error_holder:
                 self._on_error(error_holder[0])
             else:
@@ -148,9 +218,9 @@ class Exercise117Panel(QWidget):
 
         try:
             self._runner(job, on_done)
-        except Exception as exc:
+        except Exception as error:
             if generation == self._generation:
-                self._on_error(exc)
+                self._on_error(error)
 
     def reset(self) -> None:
         self._generation += 1
@@ -159,35 +229,35 @@ class Exercise117Panel(QWidget):
 
         self.summary.clearContents()
         self.summary.clearSelection()
-        self.cases.setRowCount(0)
+        self._case_model.set_case_ids([])
         self.rule.clear()
         self.search.clear()
         self.open_button.setEnabled(False)
         self.run_button.setEnabled(self._store is not None)
-
-        if self._store is None:
-            self.status.setText("Belum ada dataset aktif.")
-        else:
-            self.status.setText("Siap dijalankan.")
+        self.status.setText(
+            "Belum ada dataset aktif."
+            if self._store is None
+            else "Siap dijalankan."
+        )
 
     def _on_done(self, results: list[AnalysisResult]) -> None:
-        # menampilakan hasil analisis di GUI
         self._running = False
         self.run_button.setEnabled(self._store is not None)
         self._results = results
 
         self.summary.clearContents()
-        self.cases.setRowCount(0)
+        self._case_model.set_case_ids([])
         self.rule.clear()
         self.open_button.setEnabled(False)
 
         for row, result in enumerate(results[: self.summary.rowCount()]):
+            is_available = result.status == "ok"
             values = [
                 result.exercise_id,
                 QUESTIONS.get(result.exercise_id, ""),
-                f"{result.count:,}",
+                f"{result.count:,}" if is_available else "N/A",
                 format_days(result.mean_days),
-                f"{result.denominator:,}",
+                f"{result.denominator:,}" if is_available else "N/A",
             ]
             for column, value in enumerate(values):
                 self.summary.setItem(row, column, QTableWidgetItem(value))
@@ -197,11 +267,8 @@ class Exercise117Panel(QWidget):
             return
 
         unavailable = [result for result in results if result.status != "ok"]
-        self.status.setText(
-            unavailable[0].notes if unavailable else "Selesai."
-        )
-        
-        
+        self.status.setText(unavailable[0].notes if unavailable else "Selesai.")
+
         selected_row = next(
             (
                 index
@@ -214,12 +281,11 @@ class Exercise117Panel(QWidget):
             self.summary.selectRow(selected_row)
 
     def _on_error(self, error: Exception) -> None:
-        # menampilkan kegagalan analisis
         self._running = False
         self.run_button.setEnabled(self._store is not None)
         self._results = []
         self.summary.clearContents()
-        self.cases.setRowCount(0)
+        self._case_model.set_case_ids([])
         self.rule.clear()
         self.open_button.setEnabled(False)
         self.status.setText(f"Analisis gagal: {error}")
@@ -228,56 +294,64 @@ class Exercise117Panel(QWidget):
         row = self.summary.currentRow()
         if not (0 <= row < len(self._results)):
             self.rule.clear()
-            self.cases.setRowCount(0)
+            self._case_model.set_case_ids([])
             self.open_button.setEnabled(False)
             return
 
         result = self._results[row]
+        selected_count = f"{result.count:,}" if result.status == "ok" else "N/A"
+        denominator = (
+            f"{result.denominator:,}" if result.status == "ok" else "N/A"
+        )
         self.rule.setText(
             f"Aturan: {result.rule_description} | "
-            f"Terpilih: {result.count:,} dari {result.denominator:,} case | "
+            f"Terpilih: {selected_count} dari {denominator} case | "
             f"Status: {result.status}"
             + (f" | {result.notes}" if result.notes else "")
         )
 
-        self.cases.setRowCount(len(result.case_ids))
-        for index, case_id in enumerate(result.case_ids):
-            self.cases.setItem(
-                index, 0, QTableWidgetItem(str(case_id))
-            )
-
+        self._case_model.set_case_ids(result.case_ids)
         self._filter_cases(self.search.text())
-        self._update_open_button()
 
     def _filter_cases(self, text: str) -> None:
-        """Filter daftar case berdasarkan teks Case ID."""
-        needle = text.strip().casefold()
-
-        for row in range(self.cases.rowCount()):
-            item = self.cases.item(row, 0)
-            if item is None:
-                self.cases.setRowHidden(row, False)
-                continue
-            self.cases.setRowHidden(
-                row,
-                bool(needle) and needle not in item.text().casefold(),
-            )
-
+        self._case_filter.setFilterFixedString(text.strip())
         self._update_open_button()
 
-    def _update_open_button(self) -> None:
-        """Aktifkan tombol hanya jika ada case yang dipilih dan terlihat."""
-        self.open_button.setEnabled(self._selected_case_item() is not None)
+    def _update_open_button(self, *_args: object) -> None:
+        self.open_button.setEnabled(self._selected_case_id() is not None)
 
     def _emit_open_case(self) -> None:
-        # mengirim sinyal open_case dengan case ID yang dipilih
-        item = self._selected_case_item()
-        if item is not None:
-            self.open_case.emit(item.text())
+        case_id = self._selected_case_id()
+        if case_id is None:
+            return
+        self.open_case_requested.emit(case_id, self._evidence_row_ids(case_id))
 
-    def _selected_case_item(self) -> QTableWidgetItem | None:
-        """Case yang benar-benar dipilih pengguna dan masih terlihat."""
-        for item in self.cases.selectedItems():
-            if not self.cases.isRowHidden(item.row()):
-                return item
-        return None
+    def _selected_case_id(self) -> str | None:
+        selection_model = self.cases.selectionModel()
+        if selection_model is None:
+            return None
+        selected_rows = selection_model.selectedRows(0)
+        if not selected_rows:
+            return None
+        source_index = self._case_filter.mapToSource(selected_rows[0])
+        return self._case_model.case_id_at(source_index.row())
+
+    def _evidence_row_ids(self, case_id: str) -> list[object]:
+        row = self.summary.currentRow()
+        if not (0 <= row < len(self._results)):
+            return []
+
+        evidence = self._results[row].evidence
+        if (
+            evidence is None
+            or evidence.empty
+            or CASE_ID_COLUMN not in evidence.columns
+            or ROW_ID_COLUMN not in evidence.columns
+        ):
+            return []
+
+        matching_rows = evidence[
+            evidence[CASE_ID_COLUMN].astype("string") == case_id
+        ]
+        return matching_rows[ROW_ID_COLUMN].dropna().tolist()
+
