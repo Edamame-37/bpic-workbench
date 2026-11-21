@@ -7,7 +7,9 @@ from collections.abc import Callable
 from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, Signal
 from PySide6.QtGui import QAction, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
+    QFrame,
     QMainWindow,
+    QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -46,6 +48,26 @@ class WorkspaceRoot(QWidget):
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self.resized.emit()
+
+
+class PageScrollArea(QScrollArea):
+    """Scrollable viewport for a workspace page taller than the window."""
+
+    def __init__(self, content: QWidget) -> None:
+        super().__init__()
+        self.setWidgetResizable(True)
+        self.setFrameShape(QFrame.Shape.NoFrame)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.setWidget(content)
+        self.setStyleSheet(
+            "QScrollArea { background:transparent; }"
+            "QScrollArea > QWidget > QWidget { background:transparent; }"
+            "QScrollBar:vertical { background:#eef2f7;width:10px;margin:0; }"
+            "QScrollBar::handle:vertical { background:#c3cede;border-radius:5px;min-height:32px; }"
+            "QScrollBar::handle:vertical:hover { background:#94a3b8; }"
+            "QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical { height:0; }"
+            "QScrollBar::add-page:vertical,QScrollBar::sub-page:vertical { background:transparent; }"
+        )
 
 
 class MainWindow(QMainWindow):
@@ -88,10 +110,11 @@ class MainWindow(QMainWindow):
         self.action_bar = GlobalActionBar()
         self.pages = QStackedWidget()
         self._page_indexes: dict[str, int] = {}
+        self._page_views: dict[str, PageScrollArea] = {}
         for route in NAVIGATION_ROUTES:
-            self._page_indexes[route.route_id] = self.pages.addWidget(
-                self._panels[route.route_id]
-            )
+            view = PageScrollArea(self._panels[route.route_id])
+            self._page_views[route.route_id] = view
+            self._page_indexes[route.route_id] = self.pages.addWidget(view)
 
         central_layout = QVBoxLayout(self.root)
         central_layout.setContentsMargins(0, 0, 0, 0)
@@ -262,8 +285,8 @@ class MainWindow(QMainWindow):
 
     def current_route(self) -> str:
         current = self.pages.currentWidget()
-        for route_id, panel in self._panels.items():
-            if panel is current:
+        for route_id, view in self._page_views.items():
+            if view is current:
                 return route_id
         return "dataset"
 

@@ -21,7 +21,9 @@ def test_sidebar_exposes_and_navigates_every_route() -> None:
         for route in NAVIGATION_ROUTES:
             window.sidebar.item(route.route_id).button.click()
             assert window.current_route() == route.route_id
-            assert window.pages.currentWidget() is window._panels[route.route_id]
+            view = window.pages.currentWidget()
+            assert view is window._page_views[route.route_id]
+            assert view.widget() is window._panels[route.route_id]
             assert window.header.title.text() == route.title
     finally:
         window.close()
@@ -124,6 +126,28 @@ def test_open_case_navigates_to_explorer_and_updates_breadcrumb(synthetic_store)
     finally:
         window.worker_manager.wait_all()
         _app.processEvents()
+        window.close()
+
+
+def test_every_page_is_vertically_scrollable() -> None:
+    window = MainWindow()
+    window.resize(980, 620)
+    window.show()
+    try:
+        for route in NAVIGATION_ROUTES:
+            window.navigate(route.route_id)
+            _app.processEvents()
+            view = window._page_views[route.route_id]
+            assert view.widget() is window._panels[route.route_id]
+            bar = view.verticalScrollBar()
+            if view.widget().height() > view.viewport().height():
+                assert bar.maximum() > 0
+                assert bar.isVisible()
+                bar.setValue(bar.maximum())
+                assert bar.value() == bar.maximum()
+            else:
+                assert bar.maximum() == 0
+    finally:
         window.close()
 
 
