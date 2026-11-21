@@ -6,7 +6,7 @@ from collections.abc import Callable
 from typing import Any, TypeVar
 
 from PySide6.QtCore import QCoreApplication, QObject, QThread, Qt, Signal, Slot
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 T = TypeVar("T")
 
@@ -49,9 +49,9 @@ class WorkerManager(QObject):
 
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        # PM4Py creates a tqdm multiprocessing lock while reading XES. Initialize
-        # it on the GUI thread; importing synchronization modules in a QThread is
-        # unstable on the tested Windows/Python 3.13 runtime.
+        # PM4Py imports tqdm.auto and creates its multiprocessing lock while
+        # reading XES. Preload both on the GUI thread; lazy-importing asyncio or
+        # synchronization modules in a QThread is unstable on Windows/Python 3.13.
         tqdm.get_lock()
         self._active: dict[
             int,
