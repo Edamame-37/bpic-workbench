@@ -1,0 +1,336 @@
+# User Flow — BPIC17 Desktop Event Log Analyzer
+
+## 1. Tujuan
+
+Dokumen ini menjelaskan alur pengguna dan perubahan state aplikasi mulai dari membuka aplikasi, mengimpor XES, menjalankan delapan analisis, menelusuri evidence, hingga mengekspor CSV.
+
+Aktor utama adalah pengguna yang memiliki event log XES lokal dan ingin menjalankan analisis BPIC17 tanpa menyunting kode atau membaca ulang dataset untuk setiap exercise.
+
+## 2. Titik masuk dan prasyarat
+
+Prasyarat:
+
+- Python 3.13 dan dependency pada `requirements.txt` telah terpasang.
+- File `.xes` atau `.xes.gz` tersedia secara lokal.
+- Pengguna memiliki izin baca untuk file XES dan izin tulis untuk direktori export.
+
+Jalankan aplikasi dari root repository:
+
+```powershell
+python manage.py run
+```
+
+Saat aplikasi dibuka, delapan tab tersedia:
+
+1. Dataset & Status
+2. Overview
+3. Exercise 11.7
+4. Rework 11.15 & 11.18
+5. Exercise 11.22
+6. Case Explorer
+7. Export
+8. About
+
+Belum ada dataset atau hasil analisis aktif pada state awal.
+
+## 3. User flow utama
+
+```mermaid
+flowchart TD
+    Start[Menjalankan aplikasi] --> DatasetTab[Buka Dataset & Status]
+    DatasetTab --> Select[Pilih file XES atau XES.GZ]
+    Select --> Invalidate[Hapus dataset dan hasil lama]
+    Invalidate --> Loading[Import dan validasi di worker thread]
+    Loading --> Valid{Import berhasil?}
+
+    Valid -- Tidak --> LoadError[Tampilkan alasan kegagalan]
+    LoadError --> EmptyState[State aplikasi tetap kosong]
+    EmptyState --> Select
+
+    Valid -- Ya --> Store[EventStore aktif]
+    Store --> Metadata[Tampilkan file, case, event, atribut, dan SHA-256]
+    Store --> Overview[Hitung Overview otomatis]
+    Store --> ReworkDecision{Target fraud tepat satu?}
+    ReworkDecision -- Ya --> ReworkAuto[Jalankan 11.15 dan 11.18 otomatis]
+    ReworkDecision -- Tidak --> ReworkManual[Pengguna memilih atau mengetik target exact]
+    ReworkManual --> RunRework[Jalankan 11.15 dan 11.18]
+
+    Store --> Run117[Jalankan Exercise 11.7 A-E]
+    Store --> Run1122[Jalankan Exercise 11.22]
+
+    Run117 --> Results[Agregasi delapan AnalysisResult]
+    ReworkAuto --> Results
+    RunRework --> Results
+    Run1122 --> Results
+
+    Results --> SelectCase[Pilih case hasil]
+    SelectCase --> Explorer[Buka Case Explorer]
+    Explorer --> Trace[Tampilkan trace lengkap dan highlight evidence]
+
+    Results --> Complete{Delapan result tersedia?}
+    Complete -- Tidak --> Missing[Export tetap dinonaktifkan]
+    Missing --> RunMissing[Jalankan analisis yang belum tersedia]
+    RunMissing --> Results
+    Complete -- Ya --> ChooseDir[Pilih direktori export]
+    ChooseDir --> Export[Export CSV di worker thread]
+    Export --> ExportOk{Export berhasil?}
+    ExportOk -- Tidak --> ExportError[Tampilkan error dan pertahankan hasil]
+    ExportError --> ChooseDir
+    ExportOk -- Ya --> Files[summary.csv<br/>selected_cases.csv<br/>evidence.csv]
+```
+
+## 4. Import dataset
+
+### 4.1. Jalur sukses
+
+1. Pengguna membuka tab `Dataset & Status`.
+2. Pengguna menekan `Pilih file XES`.
+3. Dialog hanya menawarkan XES, XES.GZ, atau semua file.
+4. Setelah file dipilih, aplikasi segera:
+   - menaikkan generation ID;
+   - menghapus referensi dataset sebelumnya;
+   - membersihkan Overview, hasil exercise, Case Explorer, Export, dan metadata About;
+   - menampilkan progress indeterminate;
+   - menonaktifkan tombol pilih file selama job aktif.
+5. PM4Py membaca dan memvalidasi file di worker thread.
+6. Jika berhasil, satu `EventStore` menjadi sumber data seluruh panel.
+7. Dataset panel menampilkan nama file, jumlah case/event, SHA-256, dan warning loader.
+8. About menampilkan versi runtime serta metadata dataset aktif.
+9. Overview dihitung otomatis tanpa parsing ulang.
+
+Pembersihan state lama dilakukan sebelum import selesai agar hasil dataset A tidak pernah terlihat sebagai hasil dataset B.
+
+### 4.2. Jalur gagal
+
+Import dapat gagal karena:
+
+- file tidak ditemukan atau tidak dapat dibaca;
+- path bukan file;
+- XES rusak;
+- atribut wajib hilang atau bernilai null;
+- trace position, row ID, atau duration cache melanggar kontrak.
+
+Respons aplikasi:
+
+- progress dihentikan;
+- tombol pilih file diaktifkan kembali;
+- alasan kegagalan ditampilkan;
+- dataset dan seluruh hasil lama tetap kosong;
+- aplikasi tidak keluar atau crash.
+
+## 5. Overview
+
+Overview berjalan otomatis setelah `EventStore` aktif dan menampilkan:
+
+- total case;
+- total event;
+- total aktivitas;
+- rentang timestamp;
+- mean cycle time;
+- frekuensi aktivitas;
+- daftar durasi case;
+- metadata dan warning dataset.
+
+Pengguna dapat mencari case dan membukanya di Case Explorer. Pembukaan dari Overview tidak membawa highlight khusus karena Overview bukan filter evidence exercise.
+
+## 6. Exercise 11.7 A–E
+
+1. Pengguna membuka tab `Exercise 11.7`.
+2. Pengguna menekan `Jalankan 11.7 A-E`.
+3. Lima hasil dihitung dari `EventStore` aktif di worker thread.
+4. Tabel menampilkan exercise, deskripsi, count, mean days, dan denominator.
+5. Pengguna memilih salah satu hasil untuk melihat rule dan case IDs.
+6. Pengguna dapat mencari case, memilih satu baris, lalu menekan `Buka kasus`.
+7. Case Explorer dibuka dengan event evidence yang sesuai disorot.
+
+Hasil yang dihasilkan:
+
+- 11.7 A: seluruh case;
+- 11.7 B: mean cycle time seluruh case;
+- 11.7 C: case yang mengandung `O_Accepted`;
+- 11.7 D: case yang mengandung `O_Refused`;
+- 11.7 E: case dengan event terakhir `O_Cancelled` menurut `_trace_pos`.
+
+## 7. Exercise 11.15 dan 11.18
+
+Setelah dataset aktif, aplikasi mencari aktivitas yang memuat kata `fraud`.
+
+### Satu kandidat
+
+Jika tepat satu kandidat ditemukan:
+
+1. Aktivitas dipilih otomatis.
+2. 11.15 dan 11.18 langsung dijalankan.
+3. Hasil, case, lifecycle, resource, dan evidence ditampilkan.
+
+### Kandidat ambigu atau tidak ditemukan
+
+Jika kandidat lebih dari satu atau tidak ada:
+
+1. Aplikasi tidak memilih target secara sembarang.
+2. Pengguna memilih atau mengetik nama `concept:name` secara exact.
+3. Pengguna memastikan nilai lifecycle complete yang digunakan.
+4. Pengguna menekan `Jalankan / jalankan ulang`.
+
+11.15 membutuhkan sedikitnya dua event target dengan lifecycle `complete` dalam satu case. 11.18 menambahkan syarat resource valid yang identik. Lifecycle/resource yang tidak memadai menghasilkan status `unavailable` atau notes batas bawah, bukan nol yang diklaim valid.
+
+Pengguna dapat memilih case dan membuka seluruh evidence terkait di Case Explorer.
+
+## 8. Exercise 11.22
+
+1. Pengguna membuka tab `Exercise 11.22`.
+2. Pengguna menekan `Jalankan 11.22`.
+3. Aplikasi mencari case yang memiliki `O_Cancelled` di posisi `i` dan `O_Accepted` di posisi `j`, dengan `i < j`.
+4. Panel menampilkan count, denominator, percentage, rule, notes, dan satu pasangan evidence per case.
+5. Pengguna dapat mencari dan memilih pasangan evidence.
+6. Timeline menunjukkan posisi dan timestamp cancel–accept.
+7. Tombol `Buka di Case Explorer` membuka trace penuh dengan kedua event disorot.
+
+## 9. Case Explorer
+
+Case Explorer dapat dibuka langsung atau melalui action case dari Overview dan panel exercise.
+
+Alurnya:
+
+1. Pengguna mencari atau memilih case ID.
+2. Aplikasi mengambil trace melalui case index pada `EventStore`.
+3. Event diurutkan berdasarkan `_trace_pos`, bukan timestamp.
+4. Tabel menampilkan seluruh event case.
+5. `_row_id` yang dikirim panel asal ditandai sebagai highlight.
+6. Informasi evidence menjelaskan jumlah dan urutan event yang disorot.
+
+Jika case atau row ID tidak ditemukan pada dataset aktif, panel menampilkan pesan yang sesuai dan tidak menggunakan evidence dari dataset sebelumnya.
+
+## 10. Export
+
+Export memakai objek `AnalysisResult` yang sama dengan panel. Tidak ada perhitungan ulang analitik pada layer export.
+
+### Syarat tombol Export aktif
+
+- Dataset masih aktif.
+- Delapan exercise ID tersedia tepat satu kali:
+  - 11.7 A–E;
+  - 11.15;
+  - 11.18;
+  - 11.22.
+- Direktori output telah dipilih.
+
+Status `unavailable` tetap dianggap sebagai hasil exercise yang lengkap apabila memiliki exercise ID, denominator, status, dan alasan. Nilai tersebut diekspor sebagai unavailable, bukan diubah menjadi hasil nol valid.
+
+### Keluaran
+
+| File | Isi |
+|---|---|
+| `summary.csv` | Delapan exercise, rule, count, denominator, mean, percentage, status, dan notes |
+| `selected_cases.csv` | Exercise ID dan case ID terpilih |
+| `evidence.csv` | Union evidence columns, termasuk row ID, posisi, timestamp, lifecycle/resource, atau pasangan cancel–accept |
+
+Export berjalan di worker thread. Jika permission atau path bermasalah, hasil analisis tetap tersedia sehingga pengguna dapat memilih direktori lain dan mencoba kembali. Membatalkan dialog direktori tidak dianggap sebagai error dan tidak menghapus pilihan sebelumnya.
+
+## 11. Reset dan rerun
+
+```mermaid
+stateDiagram-v2
+    [*] --> NoDataset
+    NoDataset --> Loading: pilih XES
+    Loading --> NoDataset: import gagal
+    Loading --> DatasetReady: import berhasil
+    DatasetReady --> PartialResults: satu/sebagian analisis selesai
+    PartialResults --> CompleteResults: delapan result tersedia
+    DatasetReady --> CompleteResults: rerun semua selesai
+    CompleteResults --> Exported: export berhasil
+    Exported --> CompleteResults: export ulang
+    PartialResults --> DatasetReady: reset hasil
+    CompleteResults --> DatasetReady: reset hasil
+    Exported --> DatasetReady: reset hasil
+    DatasetReady --> Loading: pilih dataset lain
+    PartialResults --> Loading: pilih dataset lain
+    CompleteResults --> Loading: pilih dataset lain
+```
+
+### Reset hasil analisis
+
+Tombol `Reset hasil analisis`:
+
+- mempertahankan objek `EventStore` dan metadata dataset;
+- menghapus Overview terhitung, hasil 11.7, 11.15, 11.18, dan 11.22;
+- menghapus trace/highlight Case Explorer;
+- mengosongkan agregasi hasil Export;
+- membatalkan pengaruh callback analisis lama melalui generation ID;
+- tidak memanggil parser XES.
+
+### Jalankan ulang semua
+
+Tombol `Jalankan ulang semua`:
+
+1. mereset hasil turunan;
+2. menghitung ulang Overview;
+3. menjalankan 11.7 A–E;
+4. menjalankan 11.15/11.18 dengan target dan lifecycle yang sedang dipilih;
+5. menjalankan 11.22;
+6. menyinkronkan delapan result ke panel Export.
+
+Jika target rework belum dipilih, 11.15/11.18 menghasilkan status unavailable dengan alasan yang dapat diperbaiki pengguna.
+
+## 12. Pergantian dataset dan concurrency
+
+Setiap load, analisis, dan export memiliki generation context.
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant GUI
+    participant WorkerA as Worker Dataset A
+    participant WorkerB as Worker Dataset B
+
+    User->>GUI: Pilih dataset A
+    GUI->>GUI: generation = 1, kosongkan state lama
+    GUI->>WorkerA: Mulai import A
+    User->>GUI: Pilih dataset B
+    GUI->>GUI: generation = 2, kosongkan state A
+    GUI->>WorkerB: Mulai import B
+    WorkerB-->>GUI: Result B, generation 2
+    GUI->>GUI: Aktifkan EventStore B
+    WorkerA-->>GUI: Result A, generation 1
+    GUI->>GUI: Abaikan result A yang stale
+```
+
+Worker tidak memodifikasi widget secara langsung. Result/error diteruskan ke GUI thread. Dengan demikian, operasi berat tidak membekukan event loop dan callback lama tidak mengotori dataset baru.
+
+## 13. Matriks aksi dan recovery
+
+| Aksi/kondisi | Respons sistem | State akhir | Recovery pengguna |
+|---|---|---|---|
+| Membuka aplikasi | Menampilkan delapan tab | Tidak ada dataset | Pilih XES |
+| Memilih XES valid | Validasi di worker, membuat EventStore | Dataset aktif | Jalankan analisis |
+| Memilih XES rusak/hilang | Menampilkan alasan, membersihkan state lama | Tidak ada dataset | Pilih file lain |
+| Aktivitas fraud tunggal | Menjalankan 11.15/11.18 otomatis | Dua hasil rework tersedia | Tinjau atau rerun |
+| Aktivitas fraud ambigu | Meminta target exact | Rework belum lengkap | Pilih target lalu jalankan |
+| Lifecycle/resource tidak cukup | Menghasilkan `unavailable` dan notes | Result tetap dapat diaudit | Gunakan dataset/atribut yang benar |
+| Membuka case result | Beralih ke Explorer dan menyorot evidence | Trace case aktif | Kembali ke panel atau cari case lain |
+| Hasil belum delapan | Export dinonaktifkan | Partial results | Jalankan analisis yang hilang |
+| Cancel dialog export | Tidak mengubah hasil atau path lama | State sebelumnya | Pilih direktori bila diperlukan |
+| Export permission gagal | Menampilkan error, hasil dipertahankan | Complete results | Pilih lokasi writable |
+| Reset hasil | Menghapus hasil, mempertahankan store | Dataset ready | Jalankan panel atau rerun semua |
+| Rerun semua | Menghitung dari store aktif | Delapan result/unavailable | Perbaiki target bila diperlukan |
+| Memilih dataset baru | Menghapus seluruh hasil lama | Loading/dataset baru | Tunggu import selesai |
+
+## 14. Expected output per tahap
+
+| Tahap | Output yang diharapkan |
+|---|---|
+| Import | EventStore tervalidasi, metadata file, SHA-256, case/event count |
+| Overview | KPI log, frekuensi aktivitas, dan durasi case |
+| 11.7 | Lima `AnalysisResult` |
+| Rework | Dua `AnalysisResult` untuk 11.15 dan 11.18 |
+| 11.22 | Satu `AnalysisResult` dengan percentage dan pasangan evidence |
+| Explorer | Trace utuh satu case dan highlight evidence |
+| Export | Tiga CSV UTF-8 yang dapat dibaca kembali |
+| About | Versi aplikasi, Python, dependency, OS, dan metadata dataset |
+
+## 15. Batas verifikasi
+
+- User flow telah diuji menggunakan XES sintetis dan automated integration tests.
+- Dataset BPIC17 asli tidak tersedia di repository; hasil numerik, performa file penuh, dan screenshot data asli belum diverifikasi.
+- Nama aktivitas target, lifecycle, dan resource tetap bergantung pada atribut dataset aktual.
+- File export dapat mengandung identifier sensitif dan tidak boleh di-commit tanpa pemeriksaan.
