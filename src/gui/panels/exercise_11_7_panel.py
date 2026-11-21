@@ -180,6 +180,11 @@ class Exercise117Panel(QWidget):
         self._store = store
         self.reset()
 
+    def results(self) -> list[AnalysisResult]:
+        """Return the current results for integration and future CSV export."""
+
+        return list(self._results)
+
     def run(self) -> None:
         """Run the analysis through the shared runner when one is available."""
 
@@ -354,4 +359,3 @@ class Exercise117Panel(QWidget):
             evidence[CASE_ID_COLUMN].astype("string") == case_id
         ]
         return matching_rows[ROW_ID_COLUMN].dropna().tolist()
-
