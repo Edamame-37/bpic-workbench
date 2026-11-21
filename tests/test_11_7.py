@@ -40,7 +40,7 @@ def test_T01_accepted_twice_counts_one_case():
     store = build_store({"c1": [("O_Accepted", "2024-01-01 10:00"), ("O_Accepted", "2024-01-02 10:00")]})
     r = by_id(run_11_7(store))["11.7 C"]
     assert r.count == 1 and r.case_ids == ["c1"]
-    assert len(r.evidence) == 2  # dua event bukti, tetap satu case
+    assert len(r.evidence) == 1
 
 
 def test_T02_cancelled_in_middle_is_not_canceled_case():
@@ -95,6 +95,26 @@ def test_T11_same_timestamp_follows_trace_pos_not_alphabetical():
     assert by_id(run_11_7(cancelled_first))["11.7 E"].count == 0
 
 
+def test_endpoint_uses_trace_position_when_dataframe_rows_are_shuffled():
+    store = build_store({
+        "c1": [
+            ("O_Accepted", "2024-01-01 10:00"),
+            ("O_Cancelled", "2024-01-01 10:00"),
+        ]
+    })
+    shuffled_events = store.events.iloc[::-1].reset_index(drop=True)
+    shuffled_store = EventStore(
+        shuffled_events,
+        store.case_durations,
+        store.metadata,
+    )
+
+    result = by_id(run_11_7(shuffled_store))["11.7 E"]
+
+    assert result.case_ids == ["c1"]
+    assert result.evidence["_trace_pos"].tolist() == [1]
+
+
 def test_timezone_aware_duration_is_not_shifted():
     events = pd.DataFrame([
         {"case:concept:name": "c1", "concept:name": "A", "_trace_pos": 0, "_row_id": 0,
@@ -111,6 +131,48 @@ def test_loader_and_store_durations_agree(synthetic_store):
         recomputed.reset_index(drop=True),
         get_case_durations(synthetic_store).reset_index(drop=True),
     )
+
+
+def test_duration_cache_rejects_duplicate_case_rows():
+    store = build_store({"c1": [("A", "2024-01-01 10:00")]})
+    duplicated_durations = pd.concat(
+        [store.case_durations, store.case_durations], ignore_index=True
+    )
+    invalid_store = EventStore(store.events, duplicated_durations, store.metadata)
+
+    with pytest.raises(ValueError, match="one row per case"):
+        run_11_7(invalid_store)
+
+
+def test_duration_cache_must_match_active_event_cases():
+    store = build_store({
+        "c1": [("A", "2024-01-01 10:00")],
+        "c2": [("B", "2024-01-02 10:00")],
+    })
+    incomplete_durations = store.case_durations.iloc[[0]].reset_index(drop=True)
+    invalid_store = EventStore(store.events, incomplete_durations, store.metadata)
+
+    with pytest.raises(ValueError, match="does not match active events"):
+        run_11_7(invalid_store)
+
+
+def test_contains_evidence_keeps_one_event_per_selected_case():
+    store = build_store({
+        "c1": [
+            ("O_Accepted", "2024-01-01 10:00"),
+            ("O_Accepted", "2024-01-02 10:00"),
+        ],
+        "c2": [
+            ("O_Accepted", "2024-01-03 10:00"),
+            ("O_Accepted", "2024-01-04 10:00"),
+        ],
+    })
+
+    result = by_id(run_11_7(store))["11.7 C"]
+
+    assert result.count == 2
+    assert len(result.evidence) == 2
+    assert result.evidence["case:concept:name"].is_unique
 
 
 def test_run_does_not_mutate_events():
