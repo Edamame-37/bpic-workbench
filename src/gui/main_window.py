@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, Qt, Signal
+from PySide6.QtGui import QAction, QKeyEvent, QKeySequence
 from PySide6.QtWidgets import (
-    QHBoxLayout,
     QMainWindow,
     QStackedWidget,
     QVBoxLayout,
@@ -18,6 +18,8 @@ from src.core.result import AnalysisResult
 from src.gui.common import (
     NAVIGATION_ROUTES,
     ROUTES_BY_ID,
+    APP_STYLESHEET,
+    DrawerScrim,
     GlobalActionBar,
     NavigationSidebar,
     WorkspaceHeader,
@@ -38,6 +40,14 @@ NAVIGATION_AREAS = tuple(
 )
 
 
+class WorkspaceRoot(QWidget):
+    resized = Signal()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self.resized.emit()
+
+
 class MainWindow(QMainWindow):
     """Coordinate dataset state, navigation, analyses, and global actions."""
 
@@ -45,6 +55,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(APPLICATION_TITLE)
         self.resize(1280, 820)
+        self.setStyleSheet(APP_STYLESHEET)
 
         self.worker_manager = WorkerManager(self)
         runner = self.worker_manager.run
@@ -69,7 +80,10 @@ class MainWindow(QMainWindow):
             "about": self.about_panel,
         }
 
-        self.sidebar = NavigationSidebar()
+        self.root = WorkspaceRoot()
+        self.root.setObjectName("workspaceRoot")
+        self.sidebar = NavigationSidebar(self.root)
+        self.scrim = DrawerScrim(self.root)
         self.header = WorkspaceHeader()
         self.action_bar = GlobalActionBar()
         self.pages = QStackedWidget()
@@ -79,20 +93,20 @@ class MainWindow(QMainWindow):
                 self._panels[route.route_id]
             )
 
-        body = QHBoxLayout()
-        body.setContentsMargins(0, 0, 0, 0)
-        body.setSpacing(0)
-        body.addWidget(self.sidebar)
-        body.addWidget(self.pages, 1)
-
-        central = QWidget()
-        central_layout = QVBoxLayout(central)
+        central_layout = QVBoxLayout(self.root)
         central_layout.setContentsMargins(0, 0, 0, 0)
         central_layout.setSpacing(0)
         central_layout.addWidget(self.header)
-        central_layout.addLayout(body, 1)
+        central_layout.addWidget(self.pages, 1)
         central_layout.addWidget(self.action_bar)
-        self.setCentralWidget(central)
+        self.setCentralWidget(self.root)
+
+        self._navigation_open = False
+        self._drawer_animation = QPropertyAnimation(self.sidebar, b"pos", self)
+        self._drawer_animation.setDuration(180)
+        self._drawer_animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._drawer_animation.finished.connect(self._on_drawer_animation_finished)
+        self.scrim.hide()
 
         self._history = ["dataset"]
         self._history_index = 0
@@ -103,9 +117,14 @@ class MainWindow(QMainWindow):
         self.action_bar.set_dataset_active(False)
         self.navigate("dataset", record_history=False)
         self._refresh_navigation_state()
+        self.root.resized.connect(self._position_overlays)
+        self._position_overlays()
 
     def _connect_signals(self) -> None:
-        self.sidebar.route_requested.connect(self.navigate)
+        self.sidebar.route_requested.connect(self._navigate_from_drawer)
+        self.sidebar.close_requested.connect(self.close_navigation)
+        self.scrim.clicked.connect(self.close_navigation)
+        self.header.menu_requested.connect(self.toggle_navigation)
         self.header.back_requested.connect(self.go_back)
         self.header.forward_requested.connect(self.go_forward)
 
@@ -150,6 +169,7 @@ class MainWindow(QMainWindow):
         self._add_shortcut("back", "Alt+Left", self.go_back)
         self._add_shortcut("forward", "Alt+Right", self.go_forward)
         self._add_shortcut("about", "F1", lambda: self.navigate("about"))
+        self._add_shortcut("navigation", "Ctrl+B", self.toggle_navigation)
 
     def _add_shortcut(
         self,
@@ -181,6 +201,64 @@ class MainWindow(QMainWindow):
             context = f"Case {self.case_explorer_panel.current_case}"
         self.header.set_route(route.title, context)
         self._update_history_actions()
+
+    def _navigate_from_drawer(self, route_id: str) -> None:
+        self.navigate(route_id)
+        self.close_navigation()
+
+    def is_navigation_open(self) -> bool:
+        return self._navigation_open
+
+    def open_navigation(self) -> None:
+        if self._navigation_open:
+            return
+        self._navigation_open = True
+        self.scrim.setGeometry(self.root.rect())
+        self.scrim.show()
+        self.scrim.raise_()
+        self.sidebar.setGeometry(
+            self.sidebar.x(), 0, self.sidebar.DRAWER_WIDTH, self.root.height()
+        )
+        self.sidebar.show()
+        self.sidebar.raise_()
+        self._animate_drawer(QPoint(0, 0))
+
+    def close_navigation(self) -> None:
+        if not self._navigation_open:
+            return
+        self._navigation_open = False
+        self._animate_drawer(QPoint(-self.sidebar.DRAWER_WIDTH, 0))
+
+    def toggle_navigation(self) -> None:
+        if self._navigation_open:
+            self.close_navigation()
+        else:
+            self.open_navigation()
+
+    def _animate_drawer(self, target: QPoint) -> None:
+        self._drawer_animation.stop()
+        self._drawer_animation.setStartValue(self.sidebar.pos())
+        self._drawer_animation.setEndValue(target)
+        self._drawer_animation.start()
+
+    def _on_drawer_animation_finished(self) -> None:
+        if not self._navigation_open:
+            self.scrim.hide()
+
+    def _position_overlays(self) -> None:
+        self.scrim.setGeometry(self.root.rect())
+        x = 0 if self._navigation_open else -self.sidebar.DRAWER_WIDTH
+        self.sidebar.setGeometry(x, 0, self.sidebar.DRAWER_WIDTH, self.root.height())
+        if self._navigation_open:
+            self.scrim.raise_()
+            self.sidebar.raise_()
+
+    def keyPressEvent(self, event: QKeyEvent) -> None:
+        if event.key() == Qt.Key.Key_Escape and self._navigation_open:
+            self.close_navigation()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     def current_route(self) -> str:
         current = self.pages.currentWidget()
@@ -214,11 +292,13 @@ class MainWindow(QMainWindow):
     def _on_load_started(self, path: str) -> None:
         self.sidebar.set_status("dataset", "Loading", "loading")
         self.header.set_dataset(f"Memuat: {path}")
+        self.sidebar.set_dataset_context("Loading dataset", path)
         self.action_bar.status.setText("Import XES berjalan...")
 
     def _on_load_failed(self, message: str) -> None:
         self.sidebar.set_status("dataset", "Error", "error")
         self.header.set_dataset("Import gagal")
+        self.sidebar.set_dataset_context("Import failed", message)
         self.action_bar.status.setText(message)
         self.navigate("dataset")
 
@@ -234,6 +314,7 @@ class MainWindow(QMainWindow):
 
         if store is None:
             self.header.set_dataset("Tidak ada dataset aktif")
+            self.sidebar.set_dataset_context("No active dataset", "Import an XES file to begin")
             self.action_bar.status.setText("Tidak ada dataset aktif")
             self.action_bar.set_dataset_active(False)
             self.navigate("dataset")
@@ -242,7 +323,8 @@ class MainWindow(QMainWindow):
             name = metadata.get("file_name", metadata.get("dataset_name", "-"))
             cases = metadata.get("case_count", "-")
             events = metadata.get("event_count", "-")
-            self.header.set_dataset(f"{name}  ·  {cases} case  ·  {events} event")
+            self.header.set_dataset(f"{name} | {cases} case | {events} event")
+            self.sidebar.set_dataset_context(str(name), f"{cases} case | {events} event")
             self.action_bar.status.setText(f"Dataset aktif: {name}")
             self.action_bar.set_dataset_active(True)
             self.navigate("overview")

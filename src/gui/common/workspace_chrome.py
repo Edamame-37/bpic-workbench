@@ -1,48 +1,43 @@
-"""Header and global action bar for the application workspace."""
+"""Website-style header and global toolbar for the workspace."""
 
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import (
-    QFrame,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QSizePolicy,
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+
+from src.gui.common.components import IconButton
+from src.gui.common.icons import app_icon
 
 
 class WorkspaceHeader(QFrame):
+    menu_requested = Signal()
     back_requested = Signal()
     forward_requested = Signal()
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("workspaceHeader")
-        self.back_button = QPushButton("←")
-        self.forward_button = QPushButton("→")
-        self.back_button.setFixedWidth(42)
-        self.forward_button.setFixedWidth(42)
-        self.back_button.setToolTip("Kembali (Alt+Left)")
-        self.forward_button.setToolTip("Maju (Alt+Right)")
+        self.menu_button = IconButton("menu", "Open navigation (Ctrl+B)")
+        self.back_button = IconButton("back", "Back (Alt+Left)")
+        self.forward_button = IconButton("forward", "Forward (Alt+Right)")
+        self.menu_button.clicked.connect(self.menu_requested)
         self.back_button.clicked.connect(self.back_requested)
         self.forward_button.clicked.connect(self.forward_requested)
 
         self.title = QLabel("Dataset & Status")
-        self.title.setObjectName("workspaceTitle")
+        self.title.setProperty("role", "pageTitle")
         self.breadcrumb = QLabel("Workspace / Dataset & Status")
-        self.breadcrumb.setObjectName("workspaceBreadcrumb")
+        self.breadcrumb.setProperty("role", "pageSubtitle")
         title_layout = QVBoxLayout()
-        title_layout.setSpacing(1)
+        title_layout.setSpacing(0)
         title_layout.addWidget(self.title)
         title_layout.addWidget(self.breadcrumb)
 
-        self.dataset = QLabel("Tidak ada dataset aktif")
+        self.dataset = QLabel("No active dataset")
         self.dataset.setObjectName("datasetContext")
-        self.dataset.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 8, 14, 8)
+        layout.setContentsMargins(14, 8, 16, 8)
+        layout.setSpacing(8)
+        layout.addWidget(self.menu_button)
         layout.addWidget(self.back_button)
         layout.addWidget(self.forward_button)
         layout.addLayout(title_layout)
@@ -50,11 +45,9 @@ class WorkspaceHeader(QFrame):
         layout.addWidget(self.dataset)
 
         self.setStyleSheet(
-            "#workspaceHeader { background:white; border-bottom:1px solid #d1d5db; }"
-            "#workspaceTitle { font-size:17px; font-weight:700; color:#111827; }"
-            "#workspaceBreadcrumb { font-size:11px; color:#6b7280; }"
-            "#datasetContext { color:#334155; font-size:11px; padding:6px 10px; "
-            "background:#f1f5f9; border-radius:5px; }"
+            "#workspaceHeader { background:white;border-bottom:1px solid #dfe6ef; }"
+            "#datasetContext { color:#334155;font-size:11px;padding:8px 11px;"
+            "background:#f1f5f9;border:1px solid #e2e8f0;border-radius:7px; }"
         )
 
     def set_route(self, title: str, context: str = "") -> None:
@@ -80,19 +73,18 @@ class GlobalActionBar(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.setObjectName("globalActionBar")
-        self.import_button = QPushButton("Import XES")
-        self.reset_button = QPushButton("Reset")
-        self.rerun_button = QPushButton("Rerun All")
-        self.export_button = QPushButton("Export")
-        self.about_button = QPushButton("About")
-        self.status = QLabel("Tidak ada dataset aktif")
+        self.import_button = self._button("Import XES", "folder")
+        self.reset_button = self._button("Reset", "reset")
+        self.rerun_button = self._button("Rerun All", "rerun")
+        self.export_button = self._button("Export", "export")
+        self.about_button = self._button("About", "info")
+        self.status = QLabel("No active dataset")
 
-        self.import_button.setToolTip("Pilih event log XES (Ctrl+O)")
-        self.reset_button.setToolTip("Reset hasil tanpa membuang dataset")
-        self.rerun_button.setToolTip("Jalankan ulang semua analisis (Ctrl+R)")
-        self.export_button.setToolTip("Buka workspace Export")
-        self.about_button.setToolTip("Informasi aplikasi (F1)")
-
+        self.import_button.setToolTip("Choose an event log (Ctrl+O)")
+        self.reset_button.setToolTip("Clear results and keep the active dataset")
+        self.rerun_button.setToolTip("Run all analyses again (Ctrl+R)")
+        self.export_button.setToolTip("Open the export workspace")
+        self.about_button.setToolTip("Open application information (F1)")
         self.import_button.clicked.connect(self.import_requested)
         self.reset_button.clicked.connect(self.reset_requested)
         self.rerun_button.clicked.connect(self.rerun_requested)
@@ -100,7 +92,8 @@ class GlobalActionBar(QFrame):
         self.about_button.clicked.connect(self.about_requested)
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 7, 10, 7)
+        layout.setContentsMargins(12, 7, 12, 7)
+        layout.setSpacing(7)
         for button in (
             self.import_button,
             self.reset_button,
@@ -113,13 +106,19 @@ class GlobalActionBar(QFrame):
         layout.addWidget(self.status)
 
         self.setStyleSheet(
-            "#globalActionBar { background:#111827; border-top:1px solid #374151; }"
-            "#globalActionBar QPushButton { color:#f9fafb; background:#273449; border:0; "
-            "border-radius:4px; padding:7px 12px; }"
-            "#globalActionBar QPushButton:hover { background:#3b82f6; }"
-            "#globalActionBar QPushButton:disabled { color:#64748b; background:#1f2937; }"
+            "#globalActionBar { background:#111827;border-top:1px solid #334155; }"
+            "#globalActionBar QPushButton { color:#f8fafc;background:#1e293b;border:1px solid #334155;"
+            "border-radius:6px;padding:6px 11px; }"
+            "#globalActionBar QPushButton:hover { background:#1d4ed8;border-color:#3b82f6; }"
+            "#globalActionBar QPushButton:disabled { color:#64748b;background:#172033;border-color:#273449; }"
             "#globalActionBar QLabel { color:#cbd5e1; }"
         )
+
+    @staticmethod
+    def _button(text: str, icon_name: str) -> QPushButton:
+        button = QPushButton(text)
+        button.setIcon(app_icon(icon_name, "#e2e8f0"))
+        return button
 
     def set_dataset_active(self, active: bool) -> None:
         self.reset_button.setEnabled(active)
