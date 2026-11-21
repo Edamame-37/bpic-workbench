@@ -37,47 +37,129 @@ Belum ada dataset atau hasil analisis aktif pada state awal.
 
 ```mermaid
 flowchart TD
-    Start[Menjalankan aplikasi] --> DatasetTab[Buka Dataset & Status]
-    DatasetTab --> Select[Pilih file XES atau XES.GZ]
-    Select --> Invalidate[Hapus dataset dan hasil lama]
-    Invalidate --> Loading[Import dan validasi di worker thread]
-    Loading --> Valid{Import berhasil?}
+    Start([Jalankan: python manage.py run]) --> NavDataset
+    Start -. dapat dibuka tanpa dataset .-> NavAbout
 
-    Valid -- Tidak --> LoadError[Tampilkan alasan kegagalan]
-    LoadError --> EmptyState[State aplikasi tetap kosong]
-    EmptyState --> Select
+    subgraph DatasetArea["Tab: Dataset & Status"]
+        NavDataset["Navigasi: klik Dataset & Status"] --> Select["Kontrol: Pilih file XES"]
+        Select --> Invalidate["Sistem: hapus dataset dan hasil lama"]
+        Invalidate --> Loading["Sistem: import dan validasi di worker"]
+        Loading --> Valid{"Import berhasil?"}
+        Valid -- Tidak --> LoadError["Panel: tampilkan alasan kegagalan"]
+        LoadError --> EmptyState["State: tidak ada dataset aktif"]
+        EmptyState --> Select
+        Valid -- Ya --> Store["State: EventStore aktif"]
+        Store --> Metadata["Panel: file, case, event, warning, SHA-256"]
+    end
 
-    Valid -- Ya --> Store[EventStore aktif]
-    Store --> Metadata[Tampilkan file, case, event, atribut, dan SHA-256]
-    Store --> Overview[Hitung Overview otomatis]
-    Store --> ReworkDecision{Target fraud tepat satu?}
-    ReworkDecision -- Ya --> ReworkAuto[Jalankan 11.15 dan 11.18 otomatis]
-    ReworkDecision -- Tidak --> ReworkManual[Pengguna memilih atau mengetik target exact]
-    ReworkManual --> RunRework[Jalankan 11.15 dan 11.18]
+    subgraph OverviewArea["Tab: Overview"]
+        Store --> OverviewAuto["Sistem: hitung Overview otomatis"]
+        OverviewAuto --> NavOverview["Navigasi: klik Overview"]
+        NavOverview --> InspectOverview["Aksi: periksa KPI, aktivitas, dan durasi case"]
+        InspectOverview --> OverviewCase["Kontrol: pilih case lalu Buka di Case Explorer"]
+    end
 
-    Store --> Run117[Jalankan Exercise 11.7 A-E]
-    Store --> Run1122[Jalankan Exercise 11.22]
+    subgraph Exercise117Area["Tab: Exercise 11.7"]
+        Store --> Nav117["Navigasi: klik Exercise 11.7"]
+        Nav117 --> Run117["Kontrol: Jalankan 11.7 A-E"]
+        Run117 --> View117["Panel: pilih hasil, cari case, periksa rule"]
+        View117 --> Open117["Kontrol: Buka kasus"]
+    end
 
-    Run117 --> Results[Agregasi delapan AnalysisResult]
+    subgraph ReworkArea["Tab: Rework 11.15 & 11.18"]
+        Store --> ReworkDecision{"Target fraud tepat satu?"}
+        ReworkDecision -- Ya --> ReworkAuto["Sistem: jalankan 11.15 dan 11.18 otomatis"]
+        ReworkDecision -- Tidak --> NavRework["Navigasi: klik Rework 11.15 & 11.18"]
+        NavRework --> ReworkManual["Kontrol: pilih/ketik aktivitas target dan lifecycle"]
+        ReworkManual --> RunRework["Kontrol: Jalankan / jalankan ulang"]
+        ReworkAuto --> ViewRework["Panel: pilih case dan evidence"]
+        RunRework --> ViewRework
+        ViewRework --> OpenRework["Kontrol: Buka di Case Explorer"]
+    end
+
+    subgraph Exercise1122Area["Tab: Exercise 11.22"]
+        Store --> Nav1122["Navigasi: klik Exercise 11.22"]
+        Nav1122 --> Run1122["Kontrol: Jalankan 11.22"]
+        Run1122 --> View1122["Panel: cari dan pilih pasangan cancel-accept"]
+        View1122 --> Open1122["Kontrol: Buka di Case Explorer"]
+    end
+
+    subgraph ExplorerArea["Tab: Case Explorer"]
+        OverviewCase --> NavExplorer["Navigasi otomatis: pindah ke Case Explorer"]
+        Open117 --> NavExplorer
+        OpenRework --> NavExplorer
+        Open1122 --> NavExplorer
+        Store --> DirectExplorer["Navigasi alternatif: klik Case Explorer"]
+        DirectExplorer --> SearchCase["Kontrol: cari/pilih case ID"]
+        SearchCase --> Trace["Panel: trace lengkap menurut _trace_pos"]
+        NavExplorer --> Trace
+        Trace --> BackAnalysis["Navigasi: klik tab exercise untuk kembali"]
+    end
+
+    Run117 --> Results["Sistem: agregasi AnalysisResult"]
     ReworkAuto --> Results
     RunRework --> Results
     Run1122 --> Results
 
-    Results --> SelectCase[Pilih case hasil]
-    SelectCase --> Explorer[Buka Case Explorer]
-    Explorer --> Trace[Tampilkan trace lengkap dan highlight evidence]
+    subgraph ExportArea["Tab: Export"]
+        Results --> NavExport["Navigasi: klik Export"]
+        NavExport --> Complete{"Delapan result tersedia?"}
+        Complete -- Tidak --> Missing["Panel: Export CSV dinonaktifkan"]
+        Missing --> BackAnalysis
+        Complete -- Ya --> ChooseDir["Kontrol: Pilih direktori"]
+        ChooseDir --> ExportAction["Kontrol: Export CSV"]
+        ExportAction --> ExportJob["Sistem: tulis tiga CSV di worker"]
+        ExportJob --> ExportOk{"Export berhasil?"}
+        ExportOk -- Tidak --> ExportError["Panel: tampilkan error, hasil dipertahankan"]
+        ExportError --> ChooseDir
+        ExportOk -- Ya --> Files["Output: summary.csv, selected_cases.csv, evidence.csv"]
+        NavExport --> ResetAction["Kontrol alternatif: Reset hasil analisis"]
+        NavExport --> RerunAction["Kontrol alternatif: Jalankan ulang semua"]
+        ResetAction --> Store
+        RerunAction --> OverviewAuto
+        RerunAction --> Run117
+        RerunAction --> RunRework
+        RerunAction --> Run1122
+    end
 
-    Results --> Complete{Delapan result tersedia?}
-    Complete -- Tidak --> Missing[Export tetap dinonaktifkan]
-    Missing --> RunMissing[Jalankan analisis yang belum tersedia]
-    RunMissing --> Results
-    Complete -- Ya --> ChooseDir[Pilih direktori export]
-    ChooseDir --> Export[Export CSV di worker thread]
-    Export --> ExportOk{Export berhasil?}
-    ExportOk -- Tidak --> ExportError[Tampilkan error dan pertahankan hasil]
-    ExportError --> ChooseDir
-    ExportOk -- Ya --> Files[summary.csv<br/>selected_cases.csv<br/>evidence.csv]
+    subgraph AboutArea["Tab: About"]
+        Store --> NavAbout["Navigasi: klik About"]
+        NavAbout --> AboutInfo["Panel: versi aplikasi, dependency, OS, dan metadata dataset"]
+    end
+
+    BackAnalysis -. pilih tab .-> Nav117
+    BackAnalysis -. pilih tab .-> NavRework
+    BackAnalysis -. pilih tab .-> Nav1122
+
+    classDef navigation fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef action fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef system fill:#f3f4f6,stroke:#6b7280,color:#111827
+    classDef decision fill:#ffedd5,stroke:#ea580c,color:#7c2d12
+    classDef error fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
+    classDef output fill:#dcfce7,stroke:#16a34a,color:#14532d
+
+    class NavDataset,NavOverview,Nav117,NavRework,Nav1122,NavExplorer,DirectExplorer,NavExport,NavAbout,BackAnalysis navigation
+    class Select,OverviewCase,Run117,Open117,ReworkManual,RunRework,OpenRework,Run1122,Open1122,SearchCase,ChooseDir,ExportAction,ResetAction,RerunAction action
+    class Invalidate,Loading,Store,OverviewAuto,ReworkAuto,Results,ExportJob system
+    class Valid,ReworkDecision,Complete,ExportOk decision
+    class LoadError,EmptyState,Missing,ExportError error
+    class Metadata,InspectOverview,View117,ViewRework,View1122,Trace,Files,AboutInfo output
 ```
+
+### Peta navigasi dan kontrol
+
+| Tujuan pengguna | Navigasi | Kontrol atau aksi |
+|---|---|---|
+| Memilih atau mengganti XES | Tab `Dataset & Status` | `Pilih file XES` |
+| Memeriksa KPI dan daftar case | Tab `Overview` | Cari/pilih case, lalu `Buka di Case Explorer` |
+| Menjalankan 11.7 A–E | Tab `Exercise 11.7` | `Jalankan 11.7 A-E`, pilih hasil, lalu `Buka kasus` |
+| Menjalankan 11.15/11.18 | Tab `Rework 11.15 & 11.18` | Pilih aktivitas/lifecycle, lalu `Jalankan / jalankan ulang` |
+| Menjalankan 11.22 | Tab `Exercise 11.22` | `Jalankan 11.22`, pilih pasangan, lalu `Buka di Case Explorer` |
+| Menelusuri trace secara langsung | Tab `Case Explorer` | Ketik atau pilih case ID |
+| Mengekspor hasil | Tab `Export` | `Pilih direktori`, lalu `Export CSV` |
+| Menghapus hasil tanpa membuang dataset | Tab `Export` | `Reset hasil analisis` |
+| Menghitung ulang tanpa parse XES | Tab `Export` | `Jalankan ulang semua` |
+| Melihat versi dan metadata | Tab `About` | Baca informasi environment dan dataset aktif |
 
 ## 4. Import dataset
 
