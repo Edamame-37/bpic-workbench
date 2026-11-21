@@ -29,8 +29,8 @@ from src.core.overview import OverviewSummary, get_overview
 
 Runner = Callable[
     [
-        Callable[[], OverviewSummary],
-        Callable[[OverviewSummary], None],
+        Callable[[], OverviewSummary | None],
+        Callable[[OverviewSummary | None], None],
     ],
     None,
 ]
@@ -309,27 +309,27 @@ class OverviewPanel(QWidget):
         self._running = True
         self.status.setText("Menghitung ringkasan dataset...")
 
-        def job() -> OverviewSummary:
+        def job() -> OverviewSummary | None:
             try:
                 return get_overview(store)
             except Exception as exc:
                 error_holder.append(exc)
-                raise
+                return None
 
-        def on_done(summary: OverviewSummary) -> None:
+        def on_done(summary: OverviewSummary | None) -> None:
             if generation != self._generation:
                 return
-            if error_holder:
-                self._on_error(error_holder[0])
+            if error_holder or summary is None:
+                self._on_error(
+                    error_holder[0]
+                    if error_holder
+                    else RuntimeError("Overview tidak menghasilkan data")
+                )
             else:
                 self._on_done(summary)
 
         if self._runner is None:
-            try:
-                on_done(job())
-            except Exception as exc:
-                if generation == self._generation:
-                    self._on_error(exc)
+            on_done(job())
             return
 
         try:

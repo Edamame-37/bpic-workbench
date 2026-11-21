@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from PySide6.QtCore import QObject, QThread, Signal, Slot
+from PySide6.QtCore import QCoreApplication, QObject, QThread, Qt, Signal, Slot
 
 T = TypeVar("T")
 
@@ -41,10 +41,30 @@ class WorkerManager(QObject):
     used by feature panels.
     """
 
+    _result_ready = Signal(int, object)
+    _error_ready = Signal(int, object)
+    _progress_ready = Signal(int, str)
+    _thread_finished = Signal(int)
+
     def __init__(self, parent: QObject | None = None) -> None:
         super().__init__(parent)
-        self._active: dict[int, tuple[QThread, FunctionWorker]] = {}
+        self._active: dict[
+            int,
+            tuple[
+                QThread,
+                FunctionWorker,
+                Callable[[Any], None],
+                Callable[[Exception], None] | None,
+                Callable[[str], None] | None,
+            ],
+        ] = {}
+        self._completion_received: set[int] = set()
+        self._finished_threads: set[int] = set()
         self._next_id = 0
+        self._result_ready.connect(self._deliver_result)
+        self._error_ready.connect(self._deliver_error)
+        self._progress_ready.connect(self._deliver_progress)
+        self._thread_finished.connect(self._cleanup_task)
 
     def is_busy(self) -> bool:
         return bool(self._active)
@@ -68,41 +88,95 @@ class WorkerManager(QObject):
         worker = FunctionWorker(job)
         worker.moveToThread(thread)
 
-        self._active[task_id] = (thread, worker)
-
-        def cleanup() -> None:
-            self._active.pop(task_id, None)
-
-        def handle_finished(result: object) -> None:
-            try:
-                on_done(result)  # type: ignore[arg-type]
-            finally:
-                thread.quit()
-
-        def handle_error(exc: object) -> None:
-            try:
-                if on_error is not None and isinstance(exc, Exception):
-                    on_error(exc)
-            finally:
-                thread.quit()
-
-        if on_progress is not None:
-            worker.progress.connect(on_progress)
+        self._active[task_id] = (
+            thread,
+            worker,
+            on_done,
+            on_error,
+            on_progress,
+        )
 
         thread.started.connect(worker.run)
-        worker.finished.connect(handle_finished)
-        worker.error.connect(handle_error)
-        thread.finished.connect(worker.deleteLater)
+        worker.finished.connect(
+            lambda result, current_id=task_id: self._result_ready.emit(
+                current_id, result
+            )
+        )
+        worker.error.connect(
+            lambda error, current_id=task_id: self._error_ready.emit(
+                current_id, error
+            )
+        )
+        worker.progress.connect(
+            lambda message, current_id=task_id: self._progress_ready.emit(
+                current_id, message
+            )
+        )
+        worker.finished.connect(worker.deleteLater)
+        worker.error.connect(worker.deleteLater)
+        worker.finished.connect(thread.quit, Qt.ConnectionType.DirectConnection)
+        worker.error.connect(thread.quit, Qt.ConnectionType.DirectConnection)
         thread.finished.connect(thread.deleteLater)
-        thread.finished.connect(cleanup)
+        thread.finished.connect(
+            lambda current_id=task_id: self._thread_finished.emit(current_id)
+        )
 
         thread.start()
         return task_id
 
+    @Slot(int, object)
+    def _deliver_result(self, task_id: int, result: object) -> None:
+        task = self._active.get(task_id)
+        try:
+            if task is not None:
+                task[2](result)
+        finally:
+            self._mark_completion_received(task_id)
+
+    @Slot(int, object)
+    def _deliver_error(self, task_id: int, error: object) -> None:
+        task = self._active.get(task_id)
+        try:
+            if task is not None and task[3] is not None:
+                if isinstance(error, Exception):
+                    task[3](error)
+        finally:
+            self._mark_completion_received(task_id)
+
+    @Slot(int, str)
+    def _deliver_progress(self, task_id: int, message: str) -> None:
+        task = self._active.get(task_id)
+        if task is not None and task[4] is not None:
+            task[4](message)
+
+    @Slot(int)
+    def _cleanup_task(self, task_id: int) -> None:
+        self._finished_threads.add(task_id)
+        self._finalize_task(task_id)
+
+    def _mark_completion_received(self, task_id: int) -> None:
+        self._completion_received.add(task_id)
+        self._finalize_task(task_id)
+
+    def _finalize_task(self, task_id: int) -> None:
+        if (
+            task_id not in self._completion_received
+            or task_id not in self._finished_threads
+        ):
+            return
+        self._active.pop(task_id, None)
+        self._completion_received.discard(task_id)
+        self._finished_threads.discard(task_id)
+
     def wait_all(self, timeout_ms: int = 5000) -> bool:
         """Wait for all active worker threads to finish (primarily for tests/shutdown)."""
         all_finished = True
-        for thread, _worker in list(self._active.values()):
+        for thread, _worker, _on_done, _on_error, _on_progress in list(
+            self._active.values()
+        ):
             if thread.isRunning() and not thread.wait(timeout_ms):
                 all_finished = False
+        application = QCoreApplication.instance()
+        if application is not None:
+            application.processEvents()
         return all_finished

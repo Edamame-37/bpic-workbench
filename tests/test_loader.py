@@ -9,13 +9,14 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pandas as pd
 import pytest
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QThread, Qt
 from PySide6.QtWidgets import QApplication
 
 from src.core.ex_11_7 import run_11_7
 from src.core.ex_11_15_18 import run_11_15, run_11_18
 from src.core.loader import EventLogLoadError, load_event_log
 from src.core.overview import get_overview
+from src.gui.panels.dataset_panel import DatasetPanel
 from src.gui.panels.overview_panel import OverviewPanel
 from src.gui.worker import WorkerManager
 
@@ -318,3 +319,123 @@ def test_worker_manager_executes_job_and_delivers_result() -> None:
     assert results == [42]
     assert errors == []
     assert not manager.is_busy()
+
+
+def test_worker_callbacks_are_dispatched_on_gui_thread() -> None:
+    manager = WorkerManager()
+    callback_threads = []
+
+    manager.run(
+        QThread.currentThread,
+        lambda worker_thread: callback_threads.append(
+            (worker_thread, QThread.currentThread())
+        ),
+    )
+    assert manager.wait_all(5000)
+    _app.processEvents()
+
+    assert len(callback_threads) == 1
+    worker_thread, callback_thread = callback_threads[0]
+    assert worker_thread is not _app.thread()
+    assert callback_thread is _app.thread()
+
+
+def test_worker_error_callback_is_dispatched_on_gui_thread() -> None:
+    manager = WorkerManager()
+    callback_threads = []
+
+    def failing_job():
+        raise RuntimeError("synthetic worker failure")
+
+    manager.run(
+        failing_job,
+        lambda _result: None,
+        on_error=lambda error: callback_threads.append(
+            (error, QThread.currentThread())
+        ),
+    )
+    assert manager.wait_all(5000)
+    _app.processEvents()
+
+    assert len(callback_threads) == 1
+    error, callback_thread = callback_threads[0]
+    assert str(error) == "synthetic worker failure"
+    assert callback_thread is _app.thread()
+
+
+def test_dataset_panel_loads_and_clears_store(synthetic_store) -> None:
+    panel = DatasetPanel(loader=lambda _path: synthetic_store)
+    changes = []
+    panel.store_changed.connect(changes.append)
+
+    panel.load_path("synthetic.xes")
+
+    assert changes == [None, synthetic_store]
+    assert panel.store() is synthetic_store
+    assert panel.status.text() == "Dataset berhasil dimuat."
+
+    panel.clear()
+    assert panel.store() is None
+    assert changes[-1] is None
+
+
+def test_dataset_panel_invalid_load_removes_previous_store(synthetic_store) -> None:
+    def loader(path):
+        if str(path) == "invalid.xes":
+            raise ValueError("invalid dataset")
+        return synthetic_store
+
+    panel = DatasetPanel(loader=loader)
+    changes = []
+    panel.store_changed.connect(changes.append)
+    panel.load_path("valid.xes")
+
+    panel.load_path("invalid.xes")
+
+    assert panel.store() is None
+    assert changes[-1] is None
+    assert "invalid dataset" in panel.status.text()
+
+
+def test_dataset_panel_ignores_stale_loader_result(synthetic_store) -> None:
+    pending = []
+
+    def runner(job, on_done):
+        pending.append((job, on_done))
+
+    second_store = type(synthetic_store)(
+        synthetic_store.events,
+        synthetic_store.case_durations,
+        {**synthetic_store.metadata, "dataset_name": "second"},
+    )
+    stores = {
+        "first.xes": synthetic_store,
+        "second.xes": second_store,
+    }
+    panel = DatasetPanel(runner=runner, loader=lambda path: stores[str(path)])
+
+    panel.load_path("first.xes")
+    panel.load_path("second.xes")
+    first_job, first_done = pending[0]
+    second_job, second_done = pending[1]
+    first_done(first_job())
+    second_done(second_job())
+
+    assert panel.store() is second_store
+    assert "second" in panel.metadata.text()
+
+
+def test_overview_panel_recovers_from_worker_job_error(
+    synthetic_store,
+    monkeypatch,
+) -> None:
+    def fail_overview(_store):
+        raise RuntimeError("overview failure")
+
+    monkeypatch.setattr("src.gui.panels.overview_panel.get_overview", fail_overview)
+    panel = OverviewPanel(runner=lambda job, on_done: on_done(job()))
+
+    panel.set_store(synthetic_store)
+
+    assert panel.overview() is None
+    assert panel.status.text() == "Gagal memuat overview: overview failure"
