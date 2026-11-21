@@ -60,9 +60,9 @@ Alur penggunaan:
 
 1. Buka `Dataset & Status`, pilih file `.xes` atau `.xes.gz`, lalu tunggu validasi selesai.
 2. Periksa metadata, jumlah case/event, atribut, dan peringatan pada Dataset dan Overview.
-3. Jalankan Exercise 11.7 A–E.
+3. Jalankan analisis Outcome Kasus.
 4. Pilih aktivitas fraud yang tepat pada Rework bila kandidat tidak terdeteksi secara tunggal, lalu jalankan 11.15 dan 11.18.
-5. Jalankan Exercise 11.22.
+5. Jalankan analisis Urutan Cancel-Accept.
 6. Pilih case hasil dan buka Case Explorer untuk melihat trace lengkap serta event yang disorot.
 7. Buka Export, pilih direktori, lalu ekspor setelah delapan hasil tersedia.
 
@@ -86,8 +86,8 @@ Lifecycle atau resource yang tidak cukup untuk membuktikan aturan ditampilkan se
 Export menghasilkan tiga file UTF-8:
 
 - `summary.csv`: delapan hasil, rule, count, denominator, mean, percentage, status, dan notes.
-- `selected_cases.csv`: pasangan exercise dan case terpilih.
-- `evidence.csv`: union kolom evidence, termasuk row ID, posisi, timestamp, lifecycle/resource, atau pasangan cancel–accept sesuai exercise.
+- `selected_cases.csv`: pasangan kode analisis dan case terpilih.
+- `evidence.csv`: union kolom evidence, termasuk row ID, posisi, timestamp, lifecycle/resource, atau pasangan cancel–accept sesuai analisis.
 
 Direktori `exports/` diabaikan Git. Periksa sensitivitas data sebelum membagikan hasil export.
 

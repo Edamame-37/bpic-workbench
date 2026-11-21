@@ -20,7 +20,7 @@
 | Export GUI + smoke | export panel, application smoke | 13 passed |
 | Workspace navigation dan UI components | overlay drawer, backdrop, Escape, collapsible groups, history, shortcuts, badges, cards, dan vector icons | 12 passed |
 | Integration | import → 8 hasil → evidence → CSV → reset/rerun | 2 passed, 1 warning |
-| Regression terkini | `python manage.py test -q` | 148 passed, 1 warning; dua run final berturut-turut 9,83 dan 9,10 detik |
+| Regression terkini | `python manage.py test -q` | 149 passed, 1 warning; run final 9,43 detik |
 | Clean install baseline A5 | venv Python 3.13 baru + `pip install -r requirements.txt` + full suite sebelum navigation shell | 136 passed, 1 warning; 12,70 detik |
 
 Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py menyatakan `rustxes` tetap didukung sebagai fallback; import XES pada test berhasil.
@@ -31,7 +31,7 @@ Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py men
 - Dataset switch membatalkan pengaruh callback loader lama.
 - Reset dan rerun mempertahankan identitas `EventStore` serta tidak memanggil parser ulang.
 - Invalid dataset menghapus Overview, hasil A2–A4, Explorer, Export, dan About metadata lama.
-- Export ditolak bila delapan hasil belum lengkap atau terdapat exercise duplikat.
+- Export ditolak bila delapan hasil belum lengkap atau terdapat kode analisis duplikat.
 - Status `unavailable` mengekspor reason dan denominator tanpa menampilkan count placeholder sebagai jawaban valid.
 - Direktori dengan spasi, cancel dialog, path bukan direktori, dan error permission sintetis ditangani.
 - Tiga CSV dibaca kembali dengan pandas dan evidence identifier tetap tersedia.
@@ -42,7 +42,7 @@ Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py men
 
 ## Batas verifikasi dan handoff
 
-- File BPIC17 asli tidak ada di `data/`; angka delapan exercise, waktu import penuh, konsumsi memori, hash dataset, dan screenshot data asli belum diverifikasi.
+- File BPIC17 asli tidak ada di `data/`; angka delapan analisis, waktu import penuh, konsumsi memori, hash dataset, dan screenshot data asli belum diverifikasi.
 - Screenshot A5 menggunakan dataset sintetis dan harus diganti atau dilengkapi saat dataset final tersedia.
 - Review silang, rekaman demo, tag final, dan persetujuan jumlah lima anggota tetap memerlukan tindakan tim.
 - Sebelum distribusi, tim perlu meninjau kewajiban lisensi AGPL v3 PM4Py.
