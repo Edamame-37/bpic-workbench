@@ -48,6 +48,14 @@ Alternatif:
 python -m src.main
 ```
 
+Navigasi aplikasi menggunakan workspace shell bergaya process-analysis tool:
+
+- Sidebar kiri mengelompokkan Workspace, Analyses, Investigation, Output, dan System.
+- Header menampilkan halaman aktif, breadcrumb, Back/Forward, serta dataset context.
+- Badge sidebar menunjukkan loading, kesiapan dataset, jumlah hasil, case aktif, dan status export.
+- Action bar bawah menyediakan Import XES, Reset, Rerun All, Export, dan About dari halaman mana pun.
+- Gunakan `Ctrl+1` sampai `Ctrl+8` untuk berpindah halaman, `Ctrl+O` untuk import, `Ctrl+R` untuk rerun, `Alt+Left/Right` untuk history, dan `F1` untuk About.
+
 Alur penggunaan:
 
 1. Buka `Dataset & Status`, pilih file `.xes` atau `.xes.gz`, lalu tunggu validasi selesai.

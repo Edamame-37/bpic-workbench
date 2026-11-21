@@ -20,7 +20,7 @@ Jalankan aplikasi dari root repository:
 python manage.py run
 ```
 
-Saat aplikasi dibuka, delapan tab tersedia:
+Saat aplikasi dibuka, delapan workspace tersedia melalui sidebar permanen:
 
 1. Dataset & Status
 2. Overview
@@ -31,7 +31,7 @@ Saat aplikasi dibuka, delapan tab tersedia:
 7. Export
 8. About
 
-Belum ada dataset atau hasil analisis aktif pada state awal.
+Header selalu menampilkan workspace aktif, breadcrumb, tombol Back/Forward, dan context dataset. Action bar bawah menyediakan Import, Reset, Rerun All, Export, dan About dari halaman mana pun. Belum ada dataset atau hasil analisis aktif pada state awal.
 
 ## 3. User flow utama
 
@@ -40,8 +40,8 @@ flowchart TD
     Start([Jalankan: python manage.py run]) --> NavDataset
     Start -. dapat dibuka tanpa dataset .-> NavAbout
 
-    subgraph DatasetArea["Tab: Dataset & Status"]
-        NavDataset["Navigasi: klik Dataset & Status"] --> Select["Kontrol: Pilih file XES"]
+    subgraph DatasetArea["Sidebar / WORKSPACE: Dataset & Status"]
+        NavDataset["Navigasi: pilih Dataset & Status"] --> Select["Kontrol: Pilih file XES"]
         Select --> Invalidate["Sistem: hapus dataset dan hasil lama"]
         Invalidate --> Loading["Sistem: import dan validasi di worker"]
         Loading --> Valid{"Import berhasil?"}
@@ -52,24 +52,24 @@ flowchart TD
         Store --> Metadata["Panel: file, case, event, warning, SHA-256"]
     end
 
-    subgraph OverviewArea["Tab: Overview"]
+    subgraph OverviewArea["Sidebar / WORKSPACE: Overview"]
         Store --> OverviewAuto["Sistem: hitung Overview otomatis"]
-        OverviewAuto --> NavOverview["Navigasi: klik Overview"]
+        OverviewAuto --> NavOverview["Navigasi: pilih Overview"]
         NavOverview --> InspectOverview["Aksi: periksa KPI, aktivitas, dan durasi case"]
         InspectOverview --> OverviewCase["Kontrol: pilih case lalu Buka di Case Explorer"]
     end
 
-    subgraph Exercise117Area["Tab: Exercise 11.7"]
-        Store --> Nav117["Navigasi: klik Exercise 11.7"]
+    subgraph Exercise117Area["Sidebar / ANALYSES: Exercise 11.7"]
+        Store --> Nav117["Navigasi: pilih Exercise 11.7"]
         Nav117 --> Run117["Kontrol: Jalankan 11.7 A-E"]
         Run117 --> View117["Panel: pilih hasil, cari case, periksa rule"]
         View117 --> Open117["Kontrol: Buka kasus"]
     end
 
-    subgraph ReworkArea["Tab: Rework 11.15 & 11.18"]
+    subgraph ReworkArea["Sidebar / ANALYSES: Rework 11.15 & 11.18"]
         Store --> ReworkDecision{"Target fraud tepat satu?"}
         ReworkDecision -- Ya --> ReworkAuto["Sistem: jalankan 11.15 dan 11.18 otomatis"]
-        ReworkDecision -- Tidak --> NavRework["Navigasi: klik Rework 11.15 & 11.18"]
+        ReworkDecision -- Tidak --> NavRework["Navigasi: pilih Rework 11.15 & 11.18"]
         NavRework --> ReworkManual["Kontrol: pilih/ketik aktivitas target dan lifecycle"]
         ReworkManual --> RunRework["Kontrol: Jalankan / jalankan ulang"]
         ReworkAuto --> ViewRework["Panel: pilih case dan evidence"]
@@ -77,14 +77,14 @@ flowchart TD
         ViewRework --> OpenRework["Kontrol: Buka di Case Explorer"]
     end
 
-    subgraph Exercise1122Area["Tab: Exercise 11.22"]
-        Store --> Nav1122["Navigasi: klik Exercise 11.22"]
+    subgraph Exercise1122Area["Sidebar / ANALYSES: Exercise 11.22"]
+        Store --> Nav1122["Navigasi: pilih Exercise 11.22"]
         Nav1122 --> Run1122["Kontrol: Jalankan 11.22"]
         Run1122 --> View1122["Panel: cari dan pilih pasangan cancel-accept"]
         View1122 --> Open1122["Kontrol: Buka di Case Explorer"]
     end
 
-    subgraph ExplorerArea["Tab: Case Explorer"]
+    subgraph ExplorerArea["Sidebar / INVESTIGATION: Case Explorer"]
         OverviewCase --> NavExplorer["Navigasi otomatis: pindah ke Case Explorer"]
         Open117 --> NavExplorer
         OpenRework --> NavExplorer
@@ -93,7 +93,7 @@ flowchart TD
         DirectExplorer --> SearchCase["Kontrol: cari/pilih case ID"]
         SearchCase --> Trace["Panel: trace lengkap menurut _trace_pos"]
         NavExplorer --> Trace
-        Trace --> BackAnalysis["Navigasi: klik tab exercise untuk kembali"]
+        Trace --> BackAnalysis["Navigasi: Back atau pilih analysis di sidebar"]
     end
 
     Run117 --> Results["Sistem: agregasi AnalysisResult"]
@@ -101,8 +101,8 @@ flowchart TD
     RunRework --> Results
     Run1122 --> Results
 
-    subgraph ExportArea["Tab: Export"]
-        Results --> NavExport["Navigasi: klik Export"]
+    subgraph ExportArea["Sidebar / OUTPUT: Export"]
+        Results --> NavExport["Navigasi: pilih Export atau action bar Export"]
         NavExport --> Complete{"Delapan result tersedia?"}
         Complete -- Tidak --> Missing["Panel: Export CSV dinonaktifkan"]
         Missing --> BackAnalysis
@@ -122,14 +122,14 @@ flowchart TD
         RerunAction --> Run1122
     end
 
-    subgraph AboutArea["Tab: About"]
-        Store --> NavAbout["Navigasi: klik About"]
+    subgraph AboutArea["Sidebar / SYSTEM: About"]
+        Store --> NavAbout["Navigasi: pilih About atau action bar About"]
         NavAbout --> AboutInfo["Panel: versi aplikasi, dependency, OS, dan metadata dataset"]
     end
 
-    BackAnalysis -. pilih tab .-> Nav117
-    BackAnalysis -. pilih tab .-> NavRework
-    BackAnalysis -. pilih tab .-> Nav1122
+    BackAnalysis -. pilih sidebar .-> Nav117
+    BackAnalysis -. pilih sidebar .-> NavRework
+    BackAnalysis -. pilih sidebar .-> Nav1122
 
     classDef navigation fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
     classDef action fill:#fef3c7,stroke:#d97706,color:#78350f
@@ -150,22 +150,32 @@ flowchart TD
 
 | Tujuan pengguna | Navigasi | Kontrol atau aksi |
 |---|---|---|
-| Memilih atau mengganti XES | Tab `Dataset & Status` | `Pilih file XES` |
-| Memeriksa KPI dan daftar case | Tab `Overview` | Cari/pilih case, lalu `Buka di Case Explorer` |
-| Menjalankan 11.7 A–E | Tab `Exercise 11.7` | `Jalankan 11.7 A-E`, pilih hasil, lalu `Buka kasus` |
-| Menjalankan 11.15/11.18 | Tab `Rework 11.15 & 11.18` | Pilih aktivitas/lifecycle, lalu `Jalankan / jalankan ulang` |
-| Menjalankan 11.22 | Tab `Exercise 11.22` | `Jalankan 11.22`, pilih pasangan, lalu `Buka di Case Explorer` |
-| Menelusuri trace secara langsung | Tab `Case Explorer` | Ketik atau pilih case ID |
-| Mengekspor hasil | Tab `Export` | `Pilih direktori`, lalu `Export CSV` |
-| Menghapus hasil tanpa membuang dataset | Tab `Export` | `Reset hasil analisis` |
-| Menghitung ulang tanpa parse XES | Tab `Export` | `Jalankan ulang semua` |
-| Melihat versi dan metadata | Tab `About` | Baca informasi environment dan dataset aktif |
+| Memilih atau mengganti XES | Sidebar `Dataset & Status` atau action bar `Import XES` | `Pilih file XES` |
+| Memeriksa KPI dan daftar case | Sidebar `Overview` | Cari/pilih case, lalu `Buka di Case Explorer` |
+| Menjalankan 11.7 A–E | Sidebar `Exercise 11.7` | `Jalankan 11.7 A-E`, pilih hasil, lalu `Buka kasus` |
+| Menjalankan 11.15/11.18 | Sidebar `Rework 11.15 & 11.18` | Pilih aktivitas/lifecycle, lalu `Jalankan / jalankan ulang` |
+| Menjalankan 11.22 | Sidebar `Exercise 11.22` | `Jalankan 11.22`, pilih pasangan, lalu `Buka di Case Explorer` |
+| Menelusuri trace secara langsung | Sidebar `Case Explorer` | Ketik atau pilih case ID |
+| Mengekspor hasil | Sidebar atau action bar `Export` | `Pilih direktori`, lalu `Export CSV` |
+| Menghapus hasil tanpa membuang dataset | Action bar `Reset` atau halaman Export | `Reset hasil analisis` |
+| Menghitung ulang tanpa parse XES | Action bar `Rerun All` atau halaman Export | `Jalankan ulang semua` |
+| Melihat versi dan metadata | Sidebar atau action bar `About` | Baca informasi environment dan dataset aktif |
+
+### Shortcut navigasi
+
+| Shortcut | Workspace/aksi |
+|---|---|
+| `Ctrl+O` | Import XES |
+| `Ctrl+1` … `Ctrl+8` | Dataset, Overview, 11.7, Rework, 11.22, Explorer, Export, About |
+| `Alt+Left` / `Alt+Right` | Back / Forward pada navigation history |
+| `Ctrl+R` | Rerun seluruh analisis dari EventStore aktif |
+| `F1` | About |
 
 ## 4. Import dataset
 
 ### 4.1. Jalur sukses
 
-1. Pengguna membuka tab `Dataset & Status`.
+1. Pengguna memilih `Dataset & Status` pada sidebar atau `Import XES` pada action bar.
 2. Pengguna menekan `Pilih file XES`.
 3. Dialog hanya menawarkan XES, XES.GZ, atau semua file.
 4. Setelah file dipilih, aplikasi segera:
@@ -217,7 +227,7 @@ Pengguna dapat mencari case dan membukanya di Case Explorer. Pembukaan dari Over
 
 ## 6. Exercise 11.7 A–E
 
-1. Pengguna membuka tab `Exercise 11.7`.
+1. Pengguna memilih `Exercise 11.7` pada sidebar atau menekan `Ctrl+3`.
 2. Pengguna menekan `Jalankan 11.7 A-E`.
 3. Lima hasil dihitung dari `EventStore` aktif di worker thread.
 4. Tabel menampilkan exercise, deskripsi, count, mean days, dan denominator.
@@ -260,7 +270,7 @@ Pengguna dapat memilih case dan membuka seluruh evidence terkait di Case Explore
 
 ## 8. Exercise 11.22
 
-1. Pengguna membuka tab `Exercise 11.22`.
+1. Pengguna memilih `Exercise 11.22` pada sidebar atau menekan `Ctrl+5`.
 2. Pengguna menekan `Jalankan 11.22`.
 3. Aplikasi mencari case yang memiliki `O_Cancelled` di posisi `i` dan `O_Accepted` di posisi `j`, dengan `i < j`.
 4. Panel menampilkan count, denominator, percentage, rule, notes, dan satu pasangan evidence per case.
@@ -383,7 +393,7 @@ Worker tidak memodifikasi widget secara langsung. Result/error diteruskan ke GUI
 
 | Aksi/kondisi | Respons sistem | State akhir | Recovery pengguna |
 |---|---|---|---|
-| Membuka aplikasi | Menampilkan delapan tab | Tidak ada dataset | Pilih XES |
+| Membuka aplikasi | Menampilkan sidebar, header, workspace, dan action bar | Tidak ada dataset | Pilih XES |
 | Memilih XES valid | Validasi di worker, membuat EventStore | Dataset aktif | Jalankan analisis |
 | Memilih XES rusak/hilang | Menampilkan alasan, membersihkan state lama | Tidak ada dataset | Pilih file lain |
 | Aktivitas fraud tunggal | Menjalankan 11.15/11.18 otomatis | Dua hasil rework tersedia | Tinjau atau rerun |

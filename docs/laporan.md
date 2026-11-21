@@ -43,7 +43,7 @@ Reset menghapus hasil turunan dan Case Explorer tanpa menghapus `EventStore`. Re
 
 ## 8. Pengujian
 
-Pada 21 November 2026, seluruh suite berjalan dengan hasil `136 passed, 1 warning`. Integration test memverifikasi import XES sintetis, Overview, delapan hasil, evidence Case Explorer, tiga CSV, reset, rerun tanpa parse ulang, invalid dataset reset, dan penolakan callback dataset lama. Clean-install pada virtual environment Python 3.13 baru juga menghasilkan `136 passed, 1 warning` dalam 12,70 detik.
+Pada 21 November 2026, seluruh suite terkini berjalan dengan hasil `143 passed, 1 warning`. Integration test memverifikasi import XES sintetis, Overview, delapan hasil, evidence Case Explorer, tiga CSV, reset, rerun tanpa parse ulang, invalid dataset reset, dan penolakan callback dataset lama. Navigation test memverifikasi delapan workspace, history, shortcut, status badge, breadcrumb, dan global action bar. Clean-install baseline A5 sebelum navigation shell pada virtual environment Python 3.13 baru menghasilkan `136 passed, 1 warning` dalam 12,70 detik.
 
 Warning berasal dari dependency opsional PM4Py `r4pm`; fallback `rustxes` tetap dapat membaca XES. Detail perintah dan batas verifikasi dicatat dalam `docs/qa_a5.md`. Pengujian terhadap BPIC17 asli belum dilakukan karena file tidak tersedia di repository.
 
