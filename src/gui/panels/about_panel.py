@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QLabel, QVBoxLayout, QWidget
 
 from src import __version__
 from src.core.event_store import EventStore
+from src.gui.common import PageHeader, SectionCard
 
 
 class AboutPanel(QWidget):
@@ -21,7 +22,7 @@ class AboutPanel(QWidget):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.title = QLabel(f"BPIC17 Desktop Event Log Analyzer {__version__}")
-        self.title.setStyleSheet("font-size: 18px; font-weight: 700;")
+        self.title.setProperty("role", "sectionTitle")
         self.description = QLabel(
             "Aplikasi desktop PM4Py untuk delapan analisis BPIC17, evidence case, "
             "dan export CSV yang dapat direproduksi."
@@ -43,13 +44,27 @@ class AboutPanel(QWidget):
         self.dataset.setWordWrap(True)
         self.dataset.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
 
+        application_card = SectionCard("Aplikasi")
+        application_card.body.addWidget(self.title)
+        application_card.body.addWidget(self.description)
+        runtime_card = SectionCard(
+            "Environment",
+            "Versi runtime yang memengaruhi hasil dan kompatibilitas aplikasi.",
+        )
+        runtime_card.body.addWidget(self.runtime)
+        dataset_card = SectionCard(
+            "Reproduksibilitas dataset",
+            "Identitas file aktif untuk pencatatan dan verifikasi ulang.",
+        )
+        dataset_card.body.addWidget(self.dataset)
+
         layout = QVBoxLayout(self)
-        layout.addWidget(self.title)
-        layout.addWidget(self.description)
-        layout.addWidget(QLabel("Environment:"))
-        layout.addWidget(self.runtime)
-        layout.addWidget(QLabel("Reproduksibilitas dataset:"))
-        layout.addWidget(self.dataset)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(PageHeader("About", "Informasi aplikasi dan provenance analisis."))
+        layout.addWidget(application_card)
+        layout.addWidget(runtime_card)
+        layout.addWidget(dataset_card)
         layout.addStretch(1)
 
     def set_store(self, store: EventStore | None) -> None:

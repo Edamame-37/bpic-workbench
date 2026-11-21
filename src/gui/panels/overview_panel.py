@@ -14,11 +14,8 @@ from PySide6.QtCore import (
 )
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QGridLayout,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -26,6 +23,7 @@ from PySide6.QtWidgets import (
 
 from src.core.event_store import CASE_ID_COLUMN, EventStore
 from src.core.overview import OverviewSummary, get_overview
+from src.gui.common import MetricCard, PageHeader, SearchField, SecondaryButton, SectionCard
 
 Runner = Callable[
     [
@@ -207,23 +205,16 @@ class OverviewPanel(QWidget):
         self.metadata_label = QLabel("")
         self.metadata_label.setWordWrap(True)
 
-        self.total_cases_label = QLabel("N/A")
-        self.total_events_label = QLabel("N/A")
-        self.total_activities_label = QLabel("N/A")
-        self.date_range_label = QLabel("N/A")
-        self.mean_cycle_time_label = QLabel("N/A")
-
-        kpi_grid = QGridLayout()
-        kpi_grid.addWidget(QLabel("Total Case:"), 0, 0)
-        kpi_grid.addWidget(self.total_cases_label, 0, 1)
-        kpi_grid.addWidget(QLabel("Total Event:"), 0, 2)
-        kpi_grid.addWidget(self.total_events_label, 0, 3)
-        kpi_grid.addWidget(QLabel("Jumlah Aktivitas:"), 1, 0)
-        kpi_grid.addWidget(self.total_activities_label, 1, 1)
-        kpi_grid.addWidget(QLabel("Mean Cycle Time:"), 1, 2)
-        kpi_grid.addWidget(self.mean_cycle_time_label, 1, 3)
-        kpi_grid.addWidget(QLabel("Rentang Waktu:"), 2, 0)
-        kpi_grid.addWidget(self.date_range_label, 2, 1, 1, 3)
+        self.case_metric = MetricCard("Total case", "N/A")
+        self.event_metric = MetricCard("Total event", "N/A")
+        self.activity_metric = MetricCard("Aktivitas", "N/A")
+        self.cycle_metric = MetricCard("Mean cycle time", "N/A", "hari")
+        self.range_metric = MetricCard("Rentang waktu", "N/A")
+        self.total_cases_label = self.case_metric.value
+        self.total_events_label = self.event_metric.value
+        self.total_activities_label = self.activity_metric.value
+        self.date_range_label = self.range_metric.value
+        self.mean_cycle_time_label = self.cycle_metric.value
 
         self._activity_model = ActivityFrequencyModel()
         self._activity_proxy = QSortFilterProxyModel(self)
@@ -240,8 +231,7 @@ class OverviewPanel(QWidget):
         )
         self.activities.setSortingEnabled(True)
 
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Cari case ID...")
+        self.search = SearchField("Cari case ID...")
 
         self._case_model = CaseDurationModel()
         self._case_filter = QSortFilterProxyModel(self)
@@ -262,22 +252,45 @@ class OverviewPanel(QWidget):
         )
         self.cases.setSortingEnabled(True)
 
-        self.open_button = QPushButton("Buka di Case Explorer")
+        self.open_button = SecondaryButton("Buka di Case Explorer", "explorer")
         self.open_button.setEnabled(False)
 
         case_header = QHBoxLayout()
-        case_header.addWidget(QLabel("Daftar Case & Durasi:"))
         case_header.addWidget(self.search, 1)
         case_header.addWidget(self.open_button)
 
+        metrics = QHBoxLayout()
+        for card in (
+            self.case_metric,
+            self.event_metric,
+            self.activity_metric,
+            self.cycle_metric,
+        ):
+            metrics.addWidget(card)
+
+        activity_card = SectionCard(
+            "Frekuensi aktivitas",
+            "Urutkan kolom untuk membandingkan volume dan proporsi aktivitas.",
+        )
+        activity_card.body.addWidget(self.activities)
+
+        case_card = SectionCard(
+            "Case dan durasi",
+            "Cari case lalu buka jejak lengkapnya di Case Explorer.",
+        )
+        case_card.body.addLayout(case_header)
+        case_card.body.addWidget(self.cases)
+
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(PageHeader("Overview", "Ringkasan operasional dataset aktif."))
         layout.addWidget(self.status)
         layout.addWidget(self.metadata_label)
-        layout.addLayout(kpi_grid)
-        layout.addWidget(QLabel("Frekuensi Aktivitas:"))
-        layout.addWidget(self.activities, 1)
-        layout.addLayout(case_header)
-        layout.addWidget(self.cases, 2)
+        layout.addLayout(metrics)
+        layout.addWidget(self.range_metric)
+        layout.addWidget(activity_card, 1)
+        layout.addWidget(case_card, 2)
 
         self.search.textChanged.connect(self._filter_cases)
         self.cases.selectionModel().selectionChanged.connect(

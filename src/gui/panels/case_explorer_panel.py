@@ -16,7 +16,6 @@ from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QLabel,
-    QLineEdit,
     QListWidget,
     QSplitter,
     QTableView,
@@ -38,6 +37,7 @@ from src.core.ordering import (
     get_case_trace,
     search_case_ids,
 )
+from src.gui.common import PageHeader, SearchField, SectionCard
 
 HIGHLIGHT_COLOR = QColor(255, 230, 140)
 LEADING_COLUMNS = (
@@ -126,8 +126,7 @@ class CaseExplorerPanel(QWidget):
         self.current_case: str | None = None
 
         self.status = QLabel("Belum ada dataset aktif.")
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Cari case ID, mis. Application_652823628")
+        self.search = SearchField("Cari case ID, mis. Application_652823628")
         self.case_list = QListWidget()
         self.info = QLabel("Belum ada case dipilih.")
         self.info.setWordWrap(True)
@@ -139,16 +138,20 @@ class CaseExplorerPanel(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
-        left = QWidget()
-        left_layout = QVBoxLayout(left)
-        left_layout.addWidget(self.search)
-        left_layout.addWidget(self.case_list)
+        left = SectionCard(
+            "Daftar case",
+            "Cari atau pilih case yang ingin diperiksa.",
+        )
+        left.body.addWidget(self.search)
+        left.body.addWidget(self.case_list)
 
-        right = QWidget()
-        right_layout = QVBoxLayout(right)
-        right_layout.addWidget(self.info)
-        right_layout.addWidget(self.evidence_info)
-        right_layout.addWidget(self.table)
+        right = SectionCard(
+            "Trace case",
+            "Event pembukti dari analisis lain disorot pada tabel.",
+        )
+        right.body.addWidget(self.info)
+        right.body.addWidget(self.evidence_info)
+        right.body.addWidget(self.table)
 
         splitter = QSplitter()
         splitter.addWidget(left)
@@ -156,6 +159,9 @@ class CaseExplorerPanel(QWidget):
         splitter.setStretchFactor(1, 3)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(PageHeader("Case Explorer", "Telusuri trace lengkap dan bukti setiap case."))
         layout.addWidget(self.status)
         layout.addWidget(splitter)
 
@@ -207,7 +213,7 @@ class CaseExplorerPanel(QWidget):
 
         self.current_case = case_id
         self.info.setText(
-            f"Case {case_id} — {len(trace):,} event — {format_duration(self._store, case_id)}"
+            f"Case {case_id} | {len(trace):,} event | {format_duration(self._store, case_id)}"
         )
         self.evidence_info.setText(self._describe_highlights(trace, highlight_row_ids))
         first = trace.index[trace[HIGHLIGHT_COLUMN]]
@@ -234,7 +240,7 @@ class CaseExplorerPanel(QWidget):
         if not wanted:
             return ""
         marked = trace[trace[HIGHLIGHT_COLUMN]]
-        steps = " → ".join(
+        steps = " to ".join(
             f"[i={int(r[TRACE_POSITION_COLUMN])}] {r[ACTIVITY_COLUMN]} ({r[TIMESTAMP_COLUMN]})"
             for _, r in marked.iterrows()
         )

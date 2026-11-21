@@ -6,16 +6,16 @@ from pathlib import Path
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
     QFileDialog,
+    QHBoxLayout,
     QLabel,
     QProgressBar,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from src.core.event_store import EventStore
 from src.core.loader import load_event_log
-from src.gui.common import StatusBanner
+from src.gui.common import MetricCard, PageHeader, PrimaryButton, SectionCard, StatusBanner
 
 Loader = Callable[[str | Path], EventStore]
 Runner = Callable[
@@ -47,7 +47,7 @@ class DatasetPanel(QWidget):
         self._running = False
         self._store: EventStore | None = None
 
-        self.choose_button = QPushButton("Pilih file XES")
+        self.choose_button = PrimaryButton("Pilih file XES", "folder")
         self.status = StatusBanner("Belum ada dataset aktif.")
         self.metadata = QLabel("")
         self.metadata.setWordWrap(True)
@@ -58,12 +58,38 @@ class DatasetPanel(QWidget):
         self.progress.setRange(0, 0)
         self.progress.setVisible(False)
 
+        header = PageHeader(
+            "Dataset & Status",
+            "Impor event log XES, validasi struktur, dan lihat identitas dataset aktif.",
+        )
+        header.actions.addWidget(self.choose_button)
+
+        import_card = SectionCard(
+            "Sumber data",
+            "Pilih satu file .xes atau .xes.gz. Dataset lama diganti setelah file baru tervalidasi.",
+        )
+        import_card.body.addWidget(self.progress)
+        import_card.body.addWidget(self.status)
+
+        self.file_metric = MetricCard("File", "Belum ada")
+        self.case_metric = MetricCard("Case", "0")
+        self.event_metric = MetricCard("Event", "0")
+        metrics = QHBoxLayout()
+        metrics.addWidget(self.file_metric, 2)
+        metrics.addWidget(self.case_metric)
+        metrics.addWidget(self.event_metric)
+
+        detail_card = SectionCard("Detail validasi")
+        detail_card.body.addWidget(self.metadata)
+        detail_card.body.addWidget(self.warnings)
+
         layout = QVBoxLayout(self)
-        layout.addWidget(self.choose_button)
-        layout.addWidget(self.progress)
-        layout.addWidget(self.status)
-        layout.addWidget(self.metadata)
-        layout.addWidget(self.warnings)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(header)
+        layout.addWidget(import_card)
+        layout.addLayout(metrics)
+        layout.addWidget(detail_card)
         layout.addStretch(1)
 
         self.choose_button.clicked.connect(self.choose_file)
@@ -95,6 +121,12 @@ class DatasetPanel(QWidget):
         self.status.set_loading(f"Memuat {Path(path).name}...")
         self.metadata.clear()
         self.warnings.clear()
+        self.file_metric.value.setText(Path(path).name)
+        self.case_metric.value.setText("Loading")
+        self.event_metric.value.setText("Loading")
+        self.file_metric.value.setText("Belum ada")
+        self.case_metric.value.setText("0")
+        self.event_metric.value.setText("0")
         self.store_changed.emit(None)
         self.load_started.emit(str(path))
 
@@ -150,6 +182,9 @@ class DatasetPanel(QWidget):
         event_count = int(metadata.get("event_count", 0))
         sha256 = str(metadata.get("sha256", "-"))
         self.status.set_success("Dataset berhasil dimuat.")
+        self.file_metric.value.setText(str(file_name))
+        self.case_metric.value.setText(f"{case_count:,}")
+        self.event_metric.value.setText(f"{event_count:,}")
         self.metadata.setText(
             f"File: {file_name} | Case: {case_count:,} | Event: {event_count:,} | "
             f"SHA-256: {sha256}"
@@ -174,5 +209,8 @@ class DatasetPanel(QWidget):
         self.status.set_error(f"Gagal memuat dataset: {error}")
         self.metadata.clear()
         self.warnings.clear()
+        self.file_metric.value.setText("Gagal dimuat")
+        self.case_metric.value.setText("0")
+        self.event_metric.value.setText("0")
         self.load_failed.emit(str(error))
 

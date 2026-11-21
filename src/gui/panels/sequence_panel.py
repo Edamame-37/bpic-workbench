@@ -15,8 +15,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
     QTableView,
     QVBoxLayout,
     QWidget,
@@ -26,6 +24,15 @@ from src.core.event_store import EventStore
 from src.core.ex_11_22 import run_11_22
 from src.core.ordering import EVIDENCE_COLUMNS
 from src.core.result import AnalysisResult
+from src.gui.common import (
+    MetricCard,
+    PageHeader,
+    PrimaryButton,
+    SearchField,
+    SecondaryButton,
+    SectionCard,
+    TimelineStep,
+)
 from src.gui.panels.case_explorer_panel import DataFrameTableModel
 
 Runner = Callable[
@@ -51,22 +58,22 @@ class SequencePanel(QWidget):
         self.result: AnalysisResult | None = None
 
         self.status = QLabel("Belum ada dataset aktif.")
-        self.run_button = QPushButton("Jalankan 11.22")
-        self.reset_button = QPushButton("Reset hasil")
+        self.run_button = PrimaryButton("Jalankan 11.22", "rerun")
+        self.reset_button = SecondaryButton("Reset hasil", "reset")
 
-        self.count_label = QLabel("Count: –")
-        self.denominator_label = QLabel("Denominator: –")
-        self.percentage_label = QLabel("Persentase: –")
-        for label in (self.count_label, self.denominator_label, self.percentage_label):
-            label.setStyleSheet("font-size: 15px; font-weight: 600;")
+        self.count_metric = MetricCard("Case memenuhi", "Count: N/A")
+        self.denominator_metric = MetricCard("Populasi", "Denominator: N/A")
+        self.percentage_metric = MetricCard("Proporsi", "Persentase: N/A")
+        self.count_label = self.count_metric.value
+        self.denominator_label = self.denominator_metric.value
+        self.percentage_label = self.percentage_metric.value
 
         self.rule = QLabel("")
         self.rule.setWordWrap(True)
         self.notes = QLabel("")
         self.notes.setWordWrap(True)
 
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Cari case ID pada hasil...")
+        self.search = SearchField("Cari case ID pada hasil...")
         self.model = DataFrameTableModel(self)
         self.table = QTableView()
         self.table.setModel(self.model)
@@ -74,29 +81,48 @@ class SequencePanel(QWidget):
         self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
 
-        self.timeline = QLabel("Pilih satu baris untuk melihat pasangan cancel → accept.")
+        self.timeline = QLabel("Pilih satu baris untuk melihat pasangan cancel dan accept.")
         self.timeline.setWordWrap(True)
-        self.open_button = QPushButton("Buka di Case Explorer")
+        self.cancel_step = TimelineStep("Event awal: O_Cancelled")
+        self.accept_step = TimelineStep("Event berikutnya: O_Accepted")
+        self.open_button = SecondaryButton("Buka di Case Explorer", "explorer")
         self.open_button.setEnabled(False)
 
-        buttons = QHBoxLayout()
-        buttons.addWidget(self.run_button)
-        buttons.addWidget(self.reset_button)
+        header = PageHeader(
+            "Exercise 11.22",
+            "Periksa apakah O_Cancelled pada sebuah case akhirnya diikuti O_Accepted.",
+        )
+        header.actions.addWidget(self.reset_button)
+        header.actions.addWidget(self.run_button)
         kpi = QHBoxLayout()
-        for label in (self.count_label, self.denominator_label, self.percentage_label):
-            kpi.addWidget(label)
+        for card in (self.count_metric, self.denominator_metric, self.percentage_metric):
+            kpi.addWidget(card)
+
+        evidence_card = SectionCard(
+            "Pasangan event pembukti",
+            "Satu baris per case. Gunakan pencarian untuk mempersempit hasil.",
+        )
+        evidence_card.body.addWidget(self.search)
+        evidence_card.body.addWidget(self.table)
+
+        timeline_row = QHBoxLayout()
+        timeline_row.addWidget(self.cancel_step)
+        timeline_row.addWidget(self.accept_step)
+        detail_card = SectionCard("Detail pasangan terpilih")
+        detail_card.body.addWidget(self.timeline)
+        detail_card.body.addLayout(timeline_row)
+        detail_card.body.addWidget(self.open_button)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(header)
         layout.addWidget(self.status)
-        layout.addLayout(buttons)
         layout.addLayout(kpi)
         layout.addWidget(self.rule)
         layout.addWidget(self.notes)
-        layout.addWidget(QLabel("Pasangan event pembukti (satu baris per case):"))
-        layout.addWidget(self.search)
-        layout.addWidget(self.table, 1)
-        layout.addWidget(self.timeline)
-        layout.addWidget(self.open_button)
+        layout.addWidget(evidence_card, 1)
+        layout.addWidget(detail_card)
 
         self.run_button.clicked.connect(self.run)
         self.reset_button.clicked.connect(self.reset)
@@ -158,16 +184,18 @@ class SequencePanel(QWidget):
         self._generation += 1
         self._running = False
         self.result = None
-        self.count_label.setText("Count: –")
-        self.denominator_label.setText("Denominator: –")
-        self.percentage_label.setText("Persentase: –")
+        self.count_label.setText("Count: N/A")
+        self.denominator_label.setText("Denominator: N/A")
+        self.percentage_label.setText("Persentase: N/A")
         self.rule.clear()
         self.notes.clear()
         self.search.blockSignals(True)
         self.search.clear()
         self.search.blockSignals(False)
         self.model.set_frame(pd.DataFrame(columns=list(EVIDENCE_COLUMNS)))
-        self.timeline.setText("Pilih satu baris untuk melihat pasangan cancel → accept.")
+        self.timeline.setText("Pilih satu baris untuk melihat pasangan cancel dan accept.")
+        self.cancel_step.value.setText("Belum dipilih")
+        self.accept_step.value.setText("Belum dipilih")
         self.open_button.setEnabled(False)
         self.run_button.setEnabled(self._store is not None)
         self.status.setText("Belum ada dataset aktif." if self._store is None else "Siap dijalankan.")
@@ -220,12 +248,20 @@ class SequencePanel(QWidget):
         row = self._selected_row()
         self.open_button.setEnabled(row is not None)
         if row is None:
-            self.timeline.setText("Pilih satu baris untuk melihat pasangan cancel → accept.")
+            self.timeline.setText("Pilih satu baris untuk melihat pasangan cancel dan accept.")
+            self.cancel_step.value.setText("Belum dipilih")
+            self.accept_step.value.setText("Belum dipilih")
             return
         self.timeline.setText(
             f"Case {row['case_id']}:  [i={row['cancel_position']}] O_Cancelled "
-            f"({row['cancel_timestamp']})  ──▶  [j={row['accept_position']}] O_Accepted "
+            f"({row['cancel_timestamp']}) to [j={row['accept_position']}] O_Accepted "
             f"({row['accept_timestamp']})"
+        )
+        self.cancel_step.value.setText(
+            f"Position {row['cancel_position']} | {row['cancel_timestamp']}"
+        )
+        self.accept_step.value.setText(
+            f"Position {row['accept_position']} | {row['accept_timestamp']}"
         )
 
     def _emit_open_case(self) -> None:

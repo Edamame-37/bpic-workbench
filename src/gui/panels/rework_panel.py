@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QTabWidget,
@@ -28,6 +27,7 @@ from PySide6.QtWidgets import (
 from src.core import rework as rw
 from src.core.ex_11_15_18 import DEFAULT_COMPLETE_VALUE, run_11_15, run_11_18
 from src.core.result import AnalysisResult
+from src.gui.common import PageHeader, PrimaryButton, SecondaryButton, SectionCard
 
 MAX_TABLE_ROWS = 5000
 
@@ -135,18 +135,30 @@ class _ExercisePage(QWidget):
         self.case_limit_note = QLabel()
         self.evidence = _new_table()
         self.evidence_limit_note = QLabel()
-        self.open_btn = QPushButton("Buka di Case Explorer")
+        self.open_btn = SecondaryButton("Buka di Case Explorer", "explorer")
         self.open_btn.setEnabled(False)
+
+        cases_card = SectionCard(
+            "Case terpilih",
+            "Pilih satu case untuk memuat event pembuktinya.",
+        )
+        cases_card.body.addWidget(self.cases)
+        cases_card.body.addWidget(self.case_limit_note)
+        evidence_card = SectionCard(
+            "Event pembukti",
+            "Lifecycle dan resource ditampilkan sesuai nilai asli pada event log.",
+        )
+        evidence_card.body.addWidget(self.evidence)
+        evidence_card.body.addWidget(self.evidence_limit_note)
+        evidence_card.body.addWidget(self.open_btn)
+
         lay = QVBoxLayout(self)
+        lay.setContentsMargins(12, 12, 12, 12)
+        lay.setSpacing(10)
         for w in (self.headline, self.rule, self.notes):
             lay.addWidget(w)
-        lay.addWidget(QLabel("Case terpilih:"))
-        lay.addWidget(self.cases, 2)
-        lay.addWidget(self.case_limit_note)
-        lay.addWidget(QLabel("Event pembukti (lifecycle & resource asli dari data):"))
-        lay.addWidget(self.evidence, 2)
-        lay.addWidget(self.evidence_limit_note)
-        lay.addWidget(self.open_btn)
+        lay.addWidget(cases_card, 2)
+        lay.addWidget(evidence_card, 2)
         self.cases.itemSelectionChanged.connect(self._on_case_selected)
         self.open_btn.clicked.connect(self._on_open)
 
@@ -226,7 +238,7 @@ class ReworkPanel(QWidget):
         self.activity.setMinimumWidth(320)
         self.lifecycle = QLineEdit(DEFAULT_COMPLETE_VALUE)
         self.lifecycle.setMaximumWidth(140)
-        self.run_btn = QPushButton("Jalankan / jalankan ulang")
+        self.run_btn = PrimaryButton("Jalankan analisis", "rerun")
         self.run_btn.setEnabled(False)
         self.info = QLabel("Impor event log terlebih dahulu.")
         self.info.setWordWrap(True)
@@ -244,9 +256,22 @@ class ReworkPanel(QWidget):
         tabs.addTab(self.page15, "11.15 Repeated Complete")
         tabs.addTab(self.page18, "11.18 Same Resource Complete")
 
+        header = PageHeader(
+            "Rework 11.15 / 11.18",
+            "Temukan aktivitas complete berulang dan pengulangan oleh resource yang sama.",
+        )
+        target_card = SectionCard(
+            "Parameter analisis",
+            "Pilih aktivitas target secara exact dan nilai lifecycle yang merepresentasikan complete.",
+        )
+        target_card.body.addLayout(top)
+        target_card.body.addWidget(self.info)
+
         lay = QVBoxLayout(self)
-        lay.addLayout(top)
-        lay.addWidget(self.info)
+        lay.setContentsMargins(20, 18, 20, 18)
+        lay.setSpacing(12)
+        lay.addWidget(header)
+        lay.addWidget(target_card)
         lay.addWidget(tabs, 1)
 
         self.run_btn.clicked.connect(self.run_analysis)

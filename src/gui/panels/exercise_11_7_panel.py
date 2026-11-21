@@ -13,8 +13,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QHBoxLayout,
     QLabel,
-    QLineEdit,
-    QPushButton,
     QTableView,
     QTableWidget,
     QTableWidgetItem,
@@ -25,6 +23,7 @@ from PySide6.QtWidgets import (
 from src.core.event_store import CASE_ID_COLUMN, ROW_ID_COLUMN, EventStore
 from src.core.ex_11_7 import run_11_7
 from src.core.result import AnalysisResult
+from src.gui.common import PageHeader, PrimaryButton, SearchField, SecondaryButton, SectionCard
 
 
 QUESTIONS = {
@@ -113,8 +112,8 @@ class Exercise117Panel(QWidget):
         self._running = False
 
         self.status = QLabel("Belum ada dataset aktif.")
-        self.run_button = QPushButton("Jalankan 11.7 A-E")
-        self.reset_button = QPushButton("Reset hasil")
+        self.run_button = PrimaryButton("Jalankan 11.7 A-E", "rerun")
+        self.reset_button = SecondaryButton("Reset hasil", "reset")
 
         self.summary = QTableWidget(len(QUESTIONS), 5)
         self.summary.setHorizontalHeaderLabels(
@@ -124,8 +123,7 @@ class Exercise117Panel(QWidget):
         self.rule = QLabel("")
         self.rule.setWordWrap(True)
 
-        self.search = QLineEdit()
-        self.search.setPlaceholderText("Cari case ID...")
+        self.search = SearchField("Cari case ID...")
 
         self._case_model = CaseListModel()
         self._case_filter = QSortFilterProxyModel(self)
@@ -145,24 +143,37 @@ class Exercise117Panel(QWidget):
         )
         self.cases.setSortingEnabled(True)
 
-        self.open_button = QPushButton("Buka kasus")
+        self.open_button = SecondaryButton("Buka kasus", "explorer")
         self.open_button.setEnabled(False)
 
-        controls = QHBoxLayout()
-        controls.addWidget(self.run_button)
-        controls.addWidget(self.reset_button)
+        header = PageHeader(
+            "Exercise 11.7",
+            "Hitung populasi case, cycle time, dan outcome proses secara konsisten.",
+        )
+        header.actions.addWidget(self.reset_button)
+        header.actions.addWidget(self.run_button)
+
+        summary_card = SectionCard(
+            "Ringkasan hasil",
+            "Pilih satu baris untuk melihat aturan dan daftar case pembentuk hasil.",
+        )
+        summary_card.body.addWidget(self.summary)
+
+        case_controls = QHBoxLayout()
+        case_controls.addWidget(self.search, 1)
+        case_controls.addWidget(self.open_button)
+        evidence_card = SectionCard("Case terpilih")
+        evidence_card.body.addWidget(self.rule)
+        evidence_card.body.addLayout(case_controls)
+        evidence_card.body.addWidget(self.cases)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(header)
         layout.addWidget(self.status)
-        layout.addLayout(controls)
-        for widget in (
-            self.summary,
-            self.rule,
-            self.search,
-            self.cases,
-            self.open_button,
-        ):
-            layout.addWidget(widget)
+        layout.addWidget(summary_card, 1)
+        layout.addWidget(evidence_card, 2)
 
         self.run_button.clicked.connect(self.run)
         self.reset_button.clicked.connect(self.reset)

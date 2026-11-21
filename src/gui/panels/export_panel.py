@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -21,7 +20,14 @@ from PySide6.QtWidgets import (
 from src.core.event_store import EventStore
 from src.core.export import EXPECTED_EXERCISE_IDS, ExportPaths, export_results
 from src.core.result import AnalysisResult
-from src.gui.common import StatusBanner
+from src.gui.common import (
+    MetricCard,
+    PageHeader,
+    PrimaryButton,
+    SecondaryButton,
+    SectionCard,
+    StatusBanner,
+)
 
 Exporter = Callable[[list[AnalysisResult], str | Path], ExportPaths]
 Runner = Callable[
@@ -56,14 +62,15 @@ class ExportPanel(QWidget):
         self.status = StatusBanner("Belum ada dataset aktif.")
         self.dataset = QLabel("Dataset: belum ada")
         self.dataset.setWordWrap(True)
-        self.readiness = QLabel("Hasil tersedia: 0/8")
+        self.readiness_metric = MetricCard("Kesiapan hasil", "Hasil tersedia: 0/8")
+        self.readiness = self.readiness_metric.value
         self.readiness.setWordWrap(True)
 
         self.output_path = QLineEdit()
         self.output_path.setReadOnly(True)
         self.output_path.setPlaceholderText("Pilih direktori tujuan export...")
-        self.choose_button = QPushButton("Pilih direktori")
-        self.export_button = QPushButton("Export CSV")
+        self.choose_button = SecondaryButton("Pilih direktori", "folder")
+        self.export_button = PrimaryButton("Export CSV", "export")
         self.export_button.setEnabled(False)
 
         path_controls = QHBoxLayout()
@@ -77,22 +84,38 @@ class ExportPanel(QWidget):
         )
         self.summary.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-        self.reset_button = QPushButton("Reset hasil analisis")
-        self.rerun_button = QPushButton("Jalankan ulang semua")
+        self.reset_button = SecondaryButton("Reset hasil", "reset")
+        self.rerun_button = PrimaryButton("Jalankan ulang semua", "rerun")
         self.reset_button.setEnabled(False)
         self.rerun_button.setEnabled(False)
-        analysis_controls = QHBoxLayout()
-        analysis_controls.addWidget(self.reset_button)
-        analysis_controls.addWidget(self.rerun_button)
-        analysis_controls.addStretch(1)
+        header = PageHeader(
+            "Export",
+            "Verifikasi kelengkapan delapan hasil lalu simpan summary, cases, dan evidence.",
+        )
+        header.actions.addWidget(self.reset_button)
+        header.actions.addWidget(self.rerun_button)
+
+        result_card = SectionCard(
+            "Status hasil analisis",
+            "Semua exercise harus tersedia sebelum CSV dapat ditulis.",
+        )
+        result_card.body.addWidget(self.summary)
+
+        output_card = SectionCard(
+            "Direktori output",
+            "Tiga file CSV akan ditulis ke direktori yang dipilih.",
+        )
+        output_card.body.addLayout(path_controls)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 18, 20, 18)
+        layout.setSpacing(12)
+        layout.addWidget(header)
         layout.addWidget(self.status)
         layout.addWidget(self.dataset)
-        layout.addWidget(self.readiness)
-        layout.addWidget(self.summary)
-        layout.addLayout(path_controls)
-        layout.addLayout(analysis_controls)
+        layout.addWidget(self.readiness_metric)
+        layout.addWidget(result_card, 1)
+        layout.addWidget(output_card)
 
         self.choose_button.clicked.connect(self.choose_directory)
         self.export_button.clicked.connect(self.export)
