@@ -7,11 +7,12 @@ untuk export A5. Re-run tidak memerlukan impor ulang.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import pandas as pd
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QAbstractItemView,
-    QApplication,
     QComboBox,
     QHBoxLayout,
     QLabel,
@@ -29,6 +30,14 @@ from src.core.ex_11_15_18 import DEFAULT_COMPLETE_VALUE, run_11_15, run_11_18
 from src.core.result import AnalysisResult
 
 MAX_TABLE_ROWS = 5000
+
+Runner = Callable[
+    [
+        Callable[[], list[AnalysisResult]],
+        Callable[[list[AnalysisResult]], None],
+    ],
+    None,
+]
 
 
 # ----------------------------------------------------------------------------
@@ -75,7 +84,7 @@ def evidence_for_case(result: AnalysisResult, case_id: str, resource: str | None
 # ----------------------------------------------------------------------------
 # Widget
 # ----------------------------------------------------------------------------
-def _fill(table: QTableWidget, df: pd.DataFrame) -> None:
+def _fill(table: QTableWidget, df: pd.DataFrame) -> int:
     table.setSortingEnabled(False)
     table.clear()
     shown = df.iloc[:MAX_TABLE_ROWS]
@@ -89,6 +98,7 @@ def _fill(table: QTableWidget, df: pd.DataFrame) -> None:
             item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsEditable)
             table.setItem(r, c, item)
     table.resizeColumnsToContents()
+    return max(0, len(df) - len(shown))
 
 
 def _new_table() -> QTableWidget:
@@ -97,6 +107,15 @@ def _new_table() -> QTableWidget:
     t.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
     t.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
     return t
+
+
+def _limit_message(omitted_rows: int) -> str:
+    if omitted_rows <= 0:
+        return ""
+    return (
+        f"Tampilan dibatasi {MAX_TABLE_ROWS:,} baris; "
+        f"{omitted_rows:,} baris lainnya tidak ditampilkan."
+    )
 
 
 class _ExercisePage(QWidget):
@@ -113,7 +132,9 @@ class _ExercisePage(QWidget):
         self.notes = QLabel()
         self.notes.setWordWrap(True)
         self.cases = _new_table()
+        self.case_limit_note = QLabel()
         self.evidence = _new_table()
+        self.evidence_limit_note = QLabel()
         self.open_btn = QPushButton("Buka di Case Explorer")
         self.open_btn.setEnabled(False)
         lay = QVBoxLayout(self)
@@ -121,11 +142,25 @@ class _ExercisePage(QWidget):
             lay.addWidget(w)
         lay.addWidget(QLabel("Case terpilih:"))
         lay.addWidget(self.cases, 2)
+        lay.addWidget(self.case_limit_note)
         lay.addWidget(QLabel("Event pembukti (lifecycle & resource asli dari data):"))
         lay.addWidget(self.evidence, 2)
+        lay.addWidget(self.evidence_limit_note)
         lay.addWidget(self.open_btn)
         self.cases.itemSelectionChanged.connect(self._on_case_selected)
         self.open_btn.clicked.connect(self._on_open)
+
+    def clear_result(self) -> None:
+        self.result = None
+        self.headline.setText("Belum dijalankan.")
+        self.headline.setStyleSheet("")
+        self.rule.clear()
+        self.notes.clear()
+        self.case_limit_note.clear()
+        self.evidence_limit_note.clear()
+        _fill(self.cases, pd.DataFrame())
+        _fill(self.evidence, pd.DataFrame())
+        self.open_btn.setEnabled(False)
 
     def show_result(self, result: AnalysisResult) -> None:
         self.result = result
@@ -134,8 +169,10 @@ class _ExercisePage(QWidget):
         self.headline.setStyleSheet("font-weight:bold;" + ("color:#b00020;" if bad else ""))
         self.rule.setText("Aturan: " + result.rule_description)
         self.notes.setText("" if bad else "Catatan: " + result.notes)
-        _fill(self.cases, case_table(result))
+        omitted_cases = _fill(self.cases, case_table(result))
+        self.case_limit_note.setText(_limit_message(omitted_cases))
         _fill(self.evidence, pd.DataFrame())
+        self.evidence_limit_note.clear()
         self.open_btn.setEnabled(False)
 
     def _selected(self) -> tuple[str, str | None] | None:
@@ -153,7 +190,8 @@ class _ExercisePage(QWidget):
         sel = self._selected()
         if sel is None:
             return
-        _fill(self.evidence, evidence_for_case(self.result, *sel))
+        omitted_evidence = _fill(self.evidence, evidence_for_case(self.result, *sel))
+        self.evidence_limit_note.setText(_limit_message(omitted_evidence))
         self.open_btn.setEnabled(True)
 
     def _on_open(self) -> None:
@@ -161,7 +199,8 @@ class _ExercisePage(QWidget):
         if sel is None:
             return
         ev = evidence_for_case(self.result, sel[0])  # semua event pembukti case ini
-        self.open_case_requested.emit(sel[0], [int(x) for x in ev[rw.ROW_ID_COL]])
+        row_ids = ev[rw.ROW_ID_COL].dropna().tolist()
+        self.open_case_requested.emit(sel[0], row_ids)
 
 
 class ReworkPanel(QWidget):
@@ -170,10 +209,17 @@ class ReworkPanel(QWidget):
     open_case_requested = Signal(str, list)  # (case_id, daftar _row_id untuk highlight)
     results_changed = Signal()
 
-    def __init__(self, parent: QWidget | None = None):
+    def __init__(
+        self,
+        parent: QWidget | None = None,
+        runner: Runner | None = None,
+    ):
         super().__init__(parent)
+        self._runner = runner
         self._store = None
         self._results: list[AnalysisResult] = []
+        self._generation = 0
+        self._running = False
 
         self.activity = QComboBox()
         self.activity.setEditable(True)
@@ -181,6 +227,7 @@ class ReworkPanel(QWidget):
         self.lifecycle = QLineEdit(DEFAULT_COMPLETE_VALUE)
         self.lifecycle.setMaximumWidth(140)
         self.run_btn = QPushButton("Jalankan / jalankan ulang")
+        self.run_btn.setEnabled(False)
         self.info = QLabel("Impor event log terlebih dahulu.")
         self.info.setWordWrap(True)
 
@@ -209,10 +256,22 @@ class ReworkPanel(QWidget):
     # -- API untuk shell ---------------------------------------------------
     def set_store(self, store) -> None:
         """Dipanggil setelah impor/impor ulang. Mengisi kandidat target & menjalankan bila tidak ambigu."""
+        self._generation += 1
+        self._running = False
         self._store = store
+        self._results = []
+        self.page15.clear_result()
+        self.page18.clear_result()
+        self.activity.clear()
+        self.run_btn.setEnabled(store is not None)
+        self.results_changed.emit()
+
+        if store is None:
+            self.info.setText("Impor event log terlebih dahulu.")
+            return
+
         events = store.events
         cands = rw.list_fraud_activities(events)
-        self.activity.clear()
         self.activity.addItems(list(cands))
         suggestion = rw.suggest_fraud_target(events)
         if suggestion:
@@ -227,23 +286,73 @@ class ReworkPanel(QWidget):
                 else "Tidak ada aktivitas yang memuat 'fraud' di log ini; ketik nama exact bila ada."
             )
             self.info.setText(msg)
-            self._results = []
 
     def run_analysis(self) -> None:
+        if self._running:
+            return
         if self._store is None:
             self.info.setText("Belum ada event log aktif.")
             return
+
         name = self.activity.currentText()
         cv = self.lifecycle.text()
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        store = self._store
+        generation = self._generation
+        error_holder: list[Exception] = []
+
+        self._running = True
+        self.run_btn.setEnabled(False)
+        self.info.setText("Menghitung analisis 11.15 dan 11.18...")
+
+        def job() -> list[AnalysisResult]:
+            try:
+                return [
+                    run_11_15(store, name, cv),
+                    run_11_18(store, name, cv),
+                ]
+            except Exception as error:
+                error_holder.append(error)
+                return []
+
+        def on_done(results: list[AnalysisResult]) -> None:
+            if generation != self._generation:
+                return
+            if error_holder:
+                self._on_error(error_holder[0])
+            else:
+                self._on_done(results)
+
+        if self._runner is None:
+            on_done(job())
+            return
+
         try:
-            r15 = run_11_15(self._store, name, cv)
-            r18 = run_11_18(self._store, name, cv)
-        finally:
-            QApplication.restoreOverrideCursor()
-        self.page15.show_result(r15)
-        self.page18.show_result(r18)
-        self._results = [r15, r18]
+            self._runner(job, on_done)
+        except Exception as error:
+            if generation == self._generation:
+                self._on_error(error)
+
+    def _on_done(self, results: list[AnalysisResult]) -> None:
+        self._running = False
+        self.run_btn.setEnabled(self._store is not None)
+
+        if len(results) != 2:
+            self._on_error(RuntimeError("Analisis rework tidak menghasilkan dua hasil"))
+            return
+
+        self.page15.show_result(results[0])
+        self.page18.show_result(results[1])
+        self._results = results
+        self.info.setText("Analisis 11.15 dan 11.18 selesai.")
+        self.results_changed.emit()
+
+    def _on_error(self, error: Exception) -> None:
+        self._running = False
+        self.run_btn.setEnabled(self._store is not None)
+        self._results = []
+        self.page15.clear_result()
+        self.page18.clear_result()
+        self.info.setText(f"Analisis gagal: {error}")
         self.results_changed.emit()
 
     def results(self) -> list[AnalysisResult]:
