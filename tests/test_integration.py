@@ -106,7 +106,8 @@ def test_import_analyze_explore_and_invalid_dataset_reset(tmp_path: Path) -> Non
         window.sequence_panel.table.selectRow(0)
         window.sequence_panel.open_button.click()
         assert window.case_explorer_panel.current_case == "C001"
-        assert window.tabs.currentWidget() is window.case_explorer_panel
+        assert window.pages.currentWidget() is window.case_explorer_panel
+        assert window.current_route() == "explorer"
         assert window.case_explorer_panel.model.frame()["_highlight"].sum() == 2
 
         assert len(window.export_panel.results()) == 8

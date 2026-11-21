@@ -11,7 +11,7 @@ Contoh sambungan di main window:
 """
 
 import pandas as pd
-from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PySide6.QtCore import QAbstractTableModel, QModelIndex, Qt, Signal
 from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -114,6 +114,8 @@ def format_duration(store: EventStore, case_id: str) -> str:
 
 
 class CaseExplorerPanel(QWidget):
+    case_changed = Signal(object)
+
     """Penelusuran case lintas latihan."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
@@ -180,6 +182,7 @@ class CaseExplorerPanel(QWidget):
             self._case_ids = list(self._case_index.keys())
             self.status.setText(f"{len(self._case_ids):,} case tersedia.")
         self._refresh_case_list()
+        self.case_changed.emit(None)
 
     def open_case(
         self,
@@ -199,6 +202,7 @@ class CaseExplorerPanel(QWidget):
             self.current_case = None
             self.info.setText(f"Case '{case_id}' tidak ditemukan pada dataset aktif.")
             self.evidence_info.clear()
+            self.case_changed.emit(None)
             return
 
         self.current_case = case_id
@@ -209,6 +213,7 @@ class CaseExplorerPanel(QWidget):
         first = trace.index[trace[HIGHLIGHT_COLUMN]]
         if len(first):
             self.table.scrollTo(self.model.index(int(first[0]), 0))
+        self.case_changed.emit(case_id)
 
     def clear_selection(self) -> None:
         """Clear the displayed trace without rebuilding the active case index."""
@@ -218,6 +223,7 @@ class CaseExplorerPanel(QWidget):
         self.info.setText("Belum ada case dipilih.")
         self.evidence_info.clear()
         self.case_list.clearSelection()
+        self.case_changed.emit(None)
 
     # ---- internal -------------------------------------------------------
     @staticmethod

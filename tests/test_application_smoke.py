@@ -28,10 +28,11 @@ def test_main_window_registers_all_initial_areas() -> None:
 
     try:
         assert window.windowTitle() == APPLICATION_TITLE
-        assert window.tabs.count() == len(NAVIGATION_AREAS)
-        assert [
-            window.tabs.tabText(index) for index in range(window.tabs.count())
-        ] == [title for title, _ in NAVIGATION_AREAS]
+        assert window.pages.count() == len(NAVIGATION_AREAS)
+        assert len(window.sidebar.route_ids()) == len(NAVIGATION_AREAS)
+        assert window.current_route() == "dataset"
+        assert window.header.title.text() == "Dataset & Status"
+        assert not window.action_bar.reset_button.isEnabled()
         assert isinstance(window.dataset_panel, DatasetPanel)
         assert isinstance(window.overview_panel, OverviewPanel)
         assert isinstance(window.exercise_11_7_panel, Exercise117Panel)

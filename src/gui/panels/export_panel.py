@@ -35,6 +35,7 @@ class ExportPanel(QWidget):
 
     reset_requested = Signal()
     rerun_requested = Signal()
+    state_changed = Signal(str)
 
     def __init__(
         self,
@@ -108,11 +109,13 @@ class ExportPanel(QWidget):
         self._results = []
         self.last_export = None
         self._refresh()
+        self.state_changed.emit("idle")
 
     def set_results(self, results: list[AnalysisResult]) -> None:
         self._results = list(results)
         self.last_export = None
         self._refresh()
+        self.state_changed.emit("ready" if self._is_complete() else "idle")
 
     def results(self) -> list[AnalysisResult]:
         return list(self._results)
@@ -150,6 +153,7 @@ class ExportPanel(QWidget):
         self._running = True
         self.last_export = None
         self.status.set_loading("Menulis summary, selected cases, dan evidence...")
+        self.state_changed.emit("exporting")
         self._refresh_actions()
 
         def job() -> ExportPaths | None:
@@ -166,11 +170,13 @@ class ExportPanel(QWidget):
             if errors or paths is None:
                 error = errors[0] if errors else RuntimeError("Export tidak menghasilkan file")
                 self.status.set_error(f"Export gagal: {error}")
+                self.state_changed.emit("error")
                 self._refresh_actions()
                 return
             self.last_export = paths
             names = ", ".join(path.name for path in paths.all())
             self.status.set_success(f"Export selesai: {names}")
+            self.state_changed.emit("success")
             self._refresh_actions()
 
         if self._runner is None:
@@ -182,6 +188,7 @@ class ExportPanel(QWidget):
             if generation == self._generation:
                 self._running = False
                 self.status.set_error(f"Export gagal: {error}")
+                self.state_changed.emit("error")
                 self._refresh_actions()
 
     def _is_complete(self) -> bool:
