@@ -20,7 +20,7 @@ Jalankan aplikasi dari root repository:
 python manage.py run
 ```
 
-Saat aplikasi dibuka, delapan workspace tersedia melalui sidebar permanen:
+Saat aplikasi dibuka, delapan workspace tersedia melalui navigation drawer overlay:
 
 1. Dataset & Status
 2. Overview
@@ -31,13 +31,14 @@ Saat aplikasi dibuka, delapan workspace tersedia melalui sidebar permanen:
 7. Export
 8. About
 
-Header selalu menampilkan workspace aktif, breadcrumb, tombol Back/Forward, dan context dataset. Action bar bawah menyediakan Import, Reset, Rerun All, Export, dan About dari halaman mana pun. Belum ada dataset atau hasil analisis aktif pada state awal.
+Tombol menu pada header membuka drawer di atas workspace dan backdrop; drawer ditutup melalui tombol close, klik backdrop, `Escape`, atau setelah route dipilih. Grup route dapat dibuka dan ditutup tanpa mengubah halaman aktif. Header selalu menampilkan workspace aktif, breadcrumb, tombol Back/Forward, dan context dataset. Action bar bawah menyediakan Import, Reset, Rerun All, Export, dan About dari halaman mana pun. Belum ada dataset atau hasil analisis aktif pada state awal.
 
 ## 3. User flow utama
 
 ```mermaid
 flowchart TD
-    Start([Jalankan: python manage.py run]) --> NavDataset
+    Start([Jalankan: python manage.py run]) --> OpenDrawer["Header: buka navigation drawer"]
+    OpenDrawer --> NavDataset
     Start -. dapat dibuka tanpa dataset .-> NavAbout
 
     subgraph DatasetArea["Sidebar / WORKSPACE: Dataset & Status"]
@@ -93,7 +94,7 @@ flowchart TD
         DirectExplorer --> SearchCase["Kontrol: cari/pilih case ID"]
         SearchCase --> Trace["Panel: trace lengkap menurut _trace_pos"]
         NavExplorer --> Trace
-        Trace --> BackAnalysis["Navigasi: Back atau pilih analysis di sidebar"]
+        Trace --> BackAnalysis["Navigasi: Back atau buka drawer lalu pilih analysis"]
     end
 
     Run117 --> Results["Sistem: agregasi AnalysisResult"]
@@ -127,9 +128,9 @@ flowchart TD
         NavAbout --> AboutInfo["Panel: versi aplikasi, dependency, OS, dan metadata dataset"]
     end
 
-    BackAnalysis -. pilih sidebar .-> Nav117
-    BackAnalysis -. pilih sidebar .-> NavRework
-    BackAnalysis -. pilih sidebar .-> Nav1122
+    BackAnalysis -. buka drawer .-> Nav117
+    BackAnalysis -. buka drawer .-> NavRework
+    BackAnalysis -. buka drawer .-> Nav1122
 
     classDef navigation fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
     classDef action fill:#fef3c7,stroke:#d97706,color:#78350f
@@ -138,7 +139,7 @@ flowchart TD
     classDef error fill:#fee2e2,stroke:#dc2626,color:#7f1d1d
     classDef output fill:#dcfce7,stroke:#16a34a,color:#14532d
 
-    class NavDataset,NavOverview,Nav117,NavRework,Nav1122,NavExplorer,DirectExplorer,NavExport,NavAbout,BackAnalysis navigation
+    class OpenDrawer,NavDataset,NavOverview,Nav117,NavRework,Nav1122,NavExplorer,DirectExplorer,NavExport,NavAbout,BackAnalysis navigation
     class Select,OverviewCase,Run117,Open117,ReworkManual,RunRework,OpenRework,Run1122,Open1122,SearchCase,ChooseDir,ExportAction,ResetAction,RerunAction action
     class Invalidate,Loading,Store,OverviewAuto,ReworkAuto,Results,ExportJob system
     class Valid,ReworkDecision,Complete,ExportOk decision
@@ -150,13 +151,13 @@ flowchart TD
 
 | Tujuan pengguna | Navigasi | Kontrol atau aksi |
 |---|---|---|
-| Memilih atau mengganti XES | Sidebar `Dataset & Status` atau action bar `Import XES` | `Pilih file XES` |
-| Memeriksa KPI dan daftar case | Sidebar `Overview` | Cari/pilih case, lalu `Buka di Case Explorer` |
-| Menjalankan 11.7 A–E | Sidebar `Exercise 11.7` | `Jalankan 11.7 A-E`, pilih hasil, lalu `Buka kasus` |
-| Menjalankan 11.15/11.18 | Sidebar `Rework 11.15 & 11.18` | Pilih aktivitas/lifecycle, lalu `Jalankan / jalankan ulang` |
-| Menjalankan 11.22 | Sidebar `Exercise 11.22` | `Jalankan 11.22`, pilih pasangan, lalu `Buka di Case Explorer` |
-| Menelusuri trace secara langsung | Sidebar `Case Explorer` | Ketik atau pilih case ID |
-| Mengekspor hasil | Sidebar atau action bar `Export` | `Pilih direktori`, lalu `Export CSV` |
+| Memilih atau mengganti XES | Tombol menu > drawer `Dataset & Status` atau action bar `Import XES` | `Pilih file XES` |
+| Memeriksa KPI dan daftar case | Tombol menu > drawer `Overview` | Cari/pilih case, lalu `Buka di Case Explorer` |
+| Menjalankan 11.7 A–E | Tombol menu > drawer `Exercise 11.7` | `Jalankan 11.7 A-E`, pilih hasil, lalu `Buka kasus` |
+| Menjalankan 11.15/11.18 | Tombol menu > drawer `Rework 11.15 & 11.18` | Pilih aktivitas/lifecycle, lalu `Jalankan analisis` |
+| Menjalankan 11.22 | Tombol menu > drawer `Exercise 11.22` | `Jalankan 11.22`, pilih pasangan, lalu `Buka di Case Explorer` |
+| Menelusuri trace secara langsung | Tombol menu > drawer `Case Explorer` | Ketik atau pilih case ID |
+| Mengekspor hasil | Tombol menu > drawer `Export` atau action bar `Export` | `Pilih direktori`, lalu `Export CSV` |
 | Menghapus hasil tanpa membuang dataset | Action bar `Reset` atau halaman Export | `Reset hasil analisis` |
 | Menghitung ulang tanpa parse XES | Action bar `Rerun All` atau halaman Export | `Jalankan ulang semua` |
 | Melihat versi dan metadata | Sidebar atau action bar `About` | Baca informasi environment dan dataset aktif |
@@ -165,6 +166,8 @@ flowchart TD
 
 | Shortcut | Workspace/aksi |
 |---|---|
+| `Ctrl+B` | Buka atau tutup navigation drawer |
+| `Escape` | Tutup navigation drawer bila sedang terbuka |
 | `Ctrl+O` | Import XES |
 | `Ctrl+1` … `Ctrl+8` | Dataset, Overview, 11.7, Rework, 11.22, Explorer, Export, About |
 | `Alt+Left` / `Alt+Right` | Back / Forward pada navigation history |
@@ -175,7 +178,7 @@ flowchart TD
 
 ### 4.1. Jalur sukses
 
-1. Pengguna memilih `Dataset & Status` pada sidebar atau `Import XES` pada action bar.
+1. Pengguna membuka drawer lalu memilih `Dataset & Status`, atau memakai `Import XES` pada action bar.
 2. Pengguna menekan `Pilih file XES`.
 3. Dialog hanya menawarkan XES, XES.GZ, atau semua file.
 4. Setelah file dipilih, aplikasi segera:
@@ -227,7 +230,7 @@ Pengguna dapat mencari case dan membukanya di Case Explorer. Pembukaan dari Over
 
 ## 6. Exercise 11.7 A–E
 
-1. Pengguna memilih `Exercise 11.7` pada sidebar atau menekan `Ctrl+3`.
+1. Pengguna membuka drawer lalu memilih `Exercise 11.7`, atau menekan `Ctrl+3`.
 2. Pengguna menekan `Jalankan 11.7 A-E`.
 3. Lima hasil dihitung dari `EventStore` aktif di worker thread.
 4. Tabel menampilkan exercise, deskripsi, count, mean days, dan denominator.
@@ -270,7 +273,7 @@ Pengguna dapat memilih case dan membuka seluruh evidence terkait di Case Explore
 
 ## 8. Exercise 11.22
 
-1. Pengguna memilih `Exercise 11.22` pada sidebar atau menekan `Ctrl+5`.
+1. Pengguna membuka drawer lalu memilih `Exercise 11.22`, atau menekan `Ctrl+5`.
 2. Pengguna menekan `Jalankan 11.22`.
 3. Aplikasi mencari case yang memiliki `O_Cancelled` di posisi `i` dan `O_Accepted` di posisi `j`, dengan `i < j`.
 4. Panel menampilkan count, denominator, percentage, rule, notes, dan satu pasangan evidence per case.
@@ -393,7 +396,7 @@ Worker tidak memodifikasi widget secara langsung. Result/error diteruskan ke GUI
 
 | Aksi/kondisi | Respons sistem | State akhir | Recovery pengguna |
 |---|---|---|---|
-| Membuka aplikasi | Menampilkan sidebar, header, workspace, dan action bar | Tidak ada dataset | Pilih XES |
+| Membuka aplikasi | Menampilkan header, workspace, action bar, dan tombol drawer | Tidak ada dataset | Buka drawer atau pilih Import XES |
 | Memilih XES valid | Validasi di worker, membuat EventStore | Dataset aktif | Jalankan analisis |
 | Memilih XES rusak/hilang | Menampilkan alasan, membersihkan state lama | Tidak ada dataset | Pilih file lain |
 | Aktivitas fraud tunggal | Menjalankan 11.15/11.18 otomatis | Dua hasil rework tersedia | Tinjau atau rerun |

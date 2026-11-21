@@ -18,9 +18,9 @@
 |---|---|---|
 | Export core | `python -m pytest tests/test_export.py -q` | 5 passed |
 | Export GUI + smoke | export panel, application smoke | 13 passed |
-| Workspace navigation | sidebar, history, shortcuts, badges, action bar | 7 passed |
+| Workspace navigation dan UI components | overlay drawer, backdrop, Escape, collapsible groups, history, shortcuts, badges, cards, dan vector icons | 12 passed |
 | Integration | import → 8 hasil → evidence → CSV → reset/rerun | 2 passed, 1 warning |
-| Regression terkini | `python manage.py test -q` | 143 passed, 1 warning; dua run final berturut-turut 6,63 dan 6,91 detik |
+| Regression terkini | `python manage.py test -q` | 148 passed, 1 warning; dua run final berturut-turut 9,83 dan 9,10 detik |
 | Clean install baseline A5 | venv Python 3.13 baru + `pip install -r requirements.txt` + full suite sebelum navigation shell | 136 passed, 1 warning; 12,70 detik |
 
 Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py menyatakan `rustxes` tetap didukung sebagai fallback; import XES pada test berhasil.
@@ -35,9 +35,10 @@ Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py men
 - Status `unavailable` mengekspor reason dan denominator tanpa menampilkan count placeholder sebagai jawaban valid.
 - Direktori dengan spasi, cancel dialog, path bukan direktori, dan error permission sintetis ditangani.
 - Tiga CSV dibaca kembali dengan pandas dan evidence identifier tetap tersedia.
-- Delapan workspace dapat diakses dari sidebar dan shortcut `Ctrl+1`–`Ctrl+8`.
-- Navigation history, breadcrumb, dataset context, status badge, dan global action bar diuji.
-- Lock `tqdm` yang dipakai PM4Py diinisialisasi pada GUI thread agar import sinkronisasi tidak pertama kali terjadi di QThread pada Windows/Python 3.13.
+- Delapan workspace dapat diakses dari overlay drawer dan shortcut `Ctrl+1`–`Ctrl+8`.
+- Drawer menutupi tinggi workspace, memiliki backdrop, dapat ditutup lewat route, backdrop, tombol close, atau `Escape`, dan mendukung grup collapsible.
+- Navigation history, breadcrumb, dataset context, status badge, global action bar, shared cards, dan vector icons diuji.
+- `tqdm.auto` dan lock yang dipakai PM4Py diinisialisasi pada GUI thread agar import `asyncio`/sinkronisasi tidak pertama kali terjadi di QThread pada Windows/Python 3.13.
 
 ## Batas verifikasi dan handoff
 

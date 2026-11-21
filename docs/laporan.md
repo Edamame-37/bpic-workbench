@@ -33,7 +33,7 @@ Diisi oleh A4. Sertakan eventually-follows, numerator/denominator, persentase, d
 
 ## 7. GUI, Export, dan Integrasi
 
-`MainWindow` menyatukan delapan area: Dataset & Status, Overview, Exercise 11.7, Rework 11.15/11.18, Exercise 11.22, Case Explorer, Export, dan About. Satu `EventStore` aktif didistribusikan ke semua panel. Pergantian atau kegagalan dataset langsung menghapus hasil, evidence, metadata export, dan pilihan case sebelumnya.
+`MainWindow` menyatukan delapan area: Dataset & Status, Overview, Exercise 11.7, Rework 11.15/11.18, Exercise 11.22, Case Explorer, Export, dan About. Navigasi menggunakan full-height overlay drawer dengan backdrop, tombol close, `Escape`, shortcut, dan grup collapsible. Setiap panel memakai page hierarchy, card, metrik, tabel, pencarian, serta vector icon yang digambar Qt tanpa emoji atau ketergantungan font simbol. Satu `EventStore` aktif didistribusikan ke semua panel. Pergantian atau kegagalan dataset langsung menghapus hasil, evidence, metadata export, dan pilihan case sebelumnya.
 
 Pekerjaan import, analisis, serta export dijalankan oleh `WorkerManager` menggunakan `QObject` dan `QThread`. Callback result/error diteruskan kembali ke GUI thread. Setiap panel memakai generation ID sehingga hasil job lama tidak dapat masuk setelah reset atau dataset switch. Progress yang tidak memiliki ukuran numerik ditampilkan sebagai indikator indeterminate.
 
@@ -43,7 +43,7 @@ Reset menghapus hasil turunan dan Case Explorer tanpa menghapus `EventStore`. Re
 
 ## 8. Pengujian
 
-Pada 21 November 2026, seluruh suite terkini berjalan dengan hasil `143 passed, 1 warning`. Integration test memverifikasi import XES sintetis, Overview, delapan hasil, evidence Case Explorer, tiga CSV, reset, rerun tanpa parse ulang, invalid dataset reset, dan penolakan callback dataset lama. Navigation test memverifikasi delapan workspace, history, shortcut, status badge, breadcrumb, dan global action bar. Clean-install baseline A5 sebelum navigation shell pada virtual environment Python 3.13 baru menghasilkan `136 passed, 1 warning` dalam 12,70 detik.
+Pada 21 November 2026, seluruh suite terkini berjalan dua kali berturut-turut dengan hasil `148 passed, 1 warning`. Integration test memverifikasi import XES sintetis, Overview, delapan hasil, evidence Case Explorer, tiga CSV, reset, rerun tanpa parse ulang, invalid dataset reset, dan penolakan callback dataset lama. Navigation test memverifikasi overlay drawer, backdrop, close/Escape, grup collapsible, delapan workspace, history, shortcut, status badge, breadcrumb, dan global action bar. UI component test memverifikasi vector icon dan kontrak reusable card. Clean-install baseline A5 sebelum navigation shell pada virtual environment Python 3.13 baru menghasilkan `136 passed, 1 warning` dalam 12,70 detik.
 
 Warning berasal dari dependency opsional PM4Py `r4pm`; fallback `rustxes` tetap dapat membaca XES. Detail perintah dan batas verifikasi dicatat dalam `docs/qa_a5.md`. Pengujian terhadap BPIC17 asli belum dilakukan karena file tidak tersedia di repository.
 
