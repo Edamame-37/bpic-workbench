@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from src.core.event_store import EventStore
 from src.core.loader import load_event_log
+from src.gui.common import StatusBanner
 
 Loader = Callable[[str | Path], EventStore]
 Runner = Callable[
@@ -47,8 +48,7 @@ class DatasetPanel(QWidget):
         self._store: EventStore | None = None
 
         self.choose_button = QPushButton("Pilih file XES")
-        self.status = QLabel("Belum ada dataset aktif.")
-        self.status.setWordWrap(True)
+        self.status = StatusBanner("Belum ada dataset aktif.")
         self.metadata = QLabel("")
         self.metadata.setWordWrap(True)
         self.warnings = QLabel("")
@@ -92,7 +92,7 @@ class DatasetPanel(QWidget):
         self._store = None
         self.choose_button.setEnabled(False)
         self.progress.setVisible(True)
-        self.status.setText(f"Memuat {Path(path).name}...")
+        self.status.set_loading(f"Memuat {Path(path).name}...")
         self.metadata.clear()
         self.warnings.clear()
         self.store_changed.emit(None)
@@ -133,7 +133,7 @@ class DatasetPanel(QWidget):
         self._store = None
         self.choose_button.setEnabled(True)
         self.progress.setVisible(False)
-        self.status.setText("Belum ada dataset aktif.")
+        self.status.set_idle("Belum ada dataset aktif.")
         self.metadata.clear()
         self.warnings.clear()
         self.store_changed.emit(None)
@@ -149,7 +149,7 @@ class DatasetPanel(QWidget):
         case_count = int(metadata.get("case_count", 0))
         event_count = int(metadata.get("event_count", 0))
         sha256 = str(metadata.get("sha256", "-"))
-        self.status.setText("Dataset berhasil dimuat.")
+        self.status.set_success("Dataset berhasil dimuat.")
         self.metadata.setText(
             f"File: {file_name} | Case: {case_count:,} | Event: {event_count:,} | "
             f"SHA-256: {sha256}"
@@ -171,7 +171,7 @@ class DatasetPanel(QWidget):
         self._store = None
         self.choose_button.setEnabled(True)
         self.progress.setVisible(False)
-        self.status.setText(f"Gagal memuat dataset: {error}")
+        self.status.set_error(f"Gagal memuat dataset: {error}")
         self.metadata.clear()
         self.warnings.clear()
         self.load_failed.emit(str(error))
