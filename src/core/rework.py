@@ -10,16 +10,24 @@ from dataclasses import dataclass, field
 
 import pandas as pd
 
-CASE_COL = "case:concept:name"
-ACT_COL = "concept:name"
-TS_COL = "time:timestamp"
+from src.core.event_store import (
+    ACTIVITY_COLUMN,
+    CASE_ID_COLUMN,
+    ROW_ID_COLUMN,
+    TIMESTAMP_COLUMN,
+    TRACE_POSITION_COLUMN,
+)
+
+CASE_COL = CASE_ID_COLUMN
+ACT_COL = ACTIVITY_COLUMN
+TS_COL = TIMESTAMP_COLUMN
 LIFECYCLE_COL = "lifecycle:transition"
 RESOURCE_COL = "org:resource"
-ROW_ID_COL = "_row_id"
-TRACE_POS_COL = "_trace_pos"
+ROW_ID_COL = ROW_ID_COLUMN
+TRACE_POS_COL = TRACE_POSITION_COLUMN
 
 DEFAULT_COMPLETE_VALUE = "complete"
-MIN_COMPLETE = 2 
+MIN_COMPLETE = 2
 _EVIDENCE_REQUIRED = (ROW_ID_COL, TRACE_POS_COL, TS_COL)
 
 

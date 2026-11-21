@@ -237,6 +237,15 @@ def test_extra_store_events_not_mutated():
     pd.testing.assert_frame_equal(before, s.events)
 
 
+def test_extra_string_row_ids_are_preserved_in_evidence():
+    s = make_store({"c1": [F("complete", "U01"), F("complete", "U01")]})
+    s.events["_row_id"] = [f"event-{index}" for index in range(len(s.events))]
+
+    result = run_11_15(s, FRAUD)
+
+    assert result.evidence["_row_id"].tolist() == ["event-1", "event-2"]
+
+
 def test_extra_fraud_candidate_listing():
     s = make_store({"c1": [F("complete", "U01"), F("complete", "U01", act="W_Assess Potential Fraud")]})
     assert rw.list_fraud_activities(s.events) == {FRAUD: 1, "W_Assess Potential Fraud": 1}
