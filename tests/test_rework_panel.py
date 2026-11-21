@@ -61,3 +61,81 @@ def test_panel_ambiguous_target_requires_choice():
     p = ReworkPanel()
     p.set_store(s)
     assert p.activity.currentText() == "" and p.results() == []
+
+
+def test_set_store_none_clears_panel_without_error():
+    panel = ReworkPanel()
+    panel.set_store(_store())
+
+    panel.set_store(None)
+
+    assert panel.results() == []
+    assert panel.page15.result is None and panel.page18.result is None
+    assert panel.page15.headline.text() == "Belum dijalankan."
+    assert not panel.run_btn.isEnabled()
+
+
+def test_ambiguous_dataset_clears_previous_results():
+    panel = ReworkPanel()
+    panel.set_store(_store())
+    assert panel.results()
+
+    ambiguous = make_store({
+        "new": [
+            F("complete", "U01"),
+            F("complete", "U01", act="W_Assess Potential Fraud"),
+        ]
+    })
+    panel.set_store(ambiguous)
+
+    assert panel.results() == []
+    assert panel.page15.result is None and panel.page18.result is None
+    assert panel.page15.headline.text() == "Belum dijalankan."
+
+
+def test_late_worker_result_is_ignored_after_dataset_switch():
+    pending_jobs = []
+
+    def runner(job, on_done):
+        pending_jobs.append((job, on_done))
+
+    panel = ReworkPanel(runner=runner)
+    panel.set_store(_store())
+    job, on_done = pending_jobs[0]
+
+    panel.set_store(None)
+    on_done(job())
+
+    assert panel.results() == []
+    assert panel.page15.result is None and panel.page18.result is None
+    assert panel.info.text() == "Impor event log terlebih dahulu."
+
+
+def test_case_explorer_signal_preserves_string_row_ids():
+    store = make_store({"c1": [F("complete", "U01"), F("complete", "U01")]})
+    store.events["_row_id"] = [f"event-{index}" for index in range(len(store.events))]
+    panel = ReworkPanel()
+    received = []
+    panel.open_case_requested.connect(
+        lambda case_id, row_ids: received.append((case_id, row_ids))
+    )
+    panel.set_store(store)
+
+    panel.page15.cases.selectRow(0)
+    panel.page15.open_btn.click()
+
+    assert received == [("c1", ["event-1", "event-2"])]
+
+
+def test_runner_exception_is_rendered_as_error_state():
+    def failing_runner(_job, _on_done):
+        raise RuntimeError("worker unavailable")
+
+    panel = ReworkPanel(runner=failing_runner)
+
+    panel.set_store(_store())
+
+    assert panel.results() == []
+    assert panel.page15.result is None and panel.page18.result is None
+    assert panel.info.text() == "Analisis gagal: worker unavailable"
+    assert panel.run_btn.isEnabled()
