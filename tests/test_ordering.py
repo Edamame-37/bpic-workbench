@@ -170,6 +170,24 @@ def test_case_trace_full_and_ordered_with_highlight():
     assert trace["_highlight"].tolist() == [False, True, True]
 
 
+def test_string_row_ids_are_preserved_in_evidence_and_highlights():
+    store = build_store({"c1": ["O_Cancelled", "O_Accepted"]})
+    events = store.events.copy()
+    events["_row_id"] = ["cancel-A", "accept-B"]
+    string_id_store = EventStore(events, store.case_durations, store.metadata)
+
+    result = run_11_22(string_id_store)
+    trace = get_case_trace(
+        string_id_store.events,
+        "c1",
+        ["cancel-A", "accept-B"],
+    )
+
+    assert result.evidence["cancel_row_id"].tolist() == ["cancel-A"]
+    assert result.evidence["accept_row_id"].tolist() == ["accept-B"]
+    assert trace["_highlight"].tolist() == [True, True]
+
+
 def test_case_trace_unknown_case_is_empty():
     store = build_store({"c1": ["A"]})
     assert get_case_trace(store.events, "nope", case_index=build_case_index(store.events)).empty

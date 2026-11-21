@@ -31,6 +31,53 @@ def test_event_store_rejects_duplicate_row_ids(synthetic_store: EventStore) -> N
         )
 
 
+@pytest.mark.parametrize(
+    "column",
+    ["case:concept:name", "concept:name", "time:timestamp"],
+)
+def test_event_store_rejects_null_required_values(
+    synthetic_store: EventStore,
+    column: str,
+) -> None:
+    invalid_events = synthetic_store.events.copy()
+    invalid_events.loc[0, column] = None
+
+    with pytest.raises(ValueError, match="cannot contain null"):
+        EventStore(
+            invalid_events,
+            synthetic_store.case_durations,
+            synthetic_store.metadata,
+        )
+
+
+def test_event_store_rejects_duplicate_trace_position_within_case(
+    synthetic_store: EventStore,
+) -> None:
+    invalid_events = synthetic_store.events.copy()
+    invalid_events.loc[1, "_trace_pos"] = 0
+
+    with pytest.raises(ValueError, match="unique within each case"):
+        EventStore(
+            invalid_events,
+            synthetic_store.case_durations,
+            synthetic_store.metadata,
+        )
+
+
+def test_event_store_rejects_negative_trace_position(
+    synthetic_store: EventStore,
+) -> None:
+    invalid_events = synthetic_store.events.copy()
+    invalid_events.loc[0, "_trace_pos"] = -1
+
+    with pytest.raises(ValueError, match="negative"):
+        EventStore(
+            invalid_events,
+            synthetic_store.case_durations,
+            synthetic_store.metadata,
+        )
+
+
 def test_analysis_result_accepts_unique_case_count() -> None:
     result = AnalysisResult(
         exercise_id="11.22",

@@ -138,10 +138,8 @@ def test_duration_cache_rejects_duplicate_case_rows():
     duplicated_durations = pd.concat(
         [store.case_durations, store.case_durations], ignore_index=True
     )
-    invalid_store = EventStore(store.events, duplicated_durations, store.metadata)
-
     with pytest.raises(ValueError, match="one row per case"):
-        run_11_7(invalid_store)
+        EventStore(store.events, duplicated_durations, store.metadata)
 
 
 def test_duration_cache_must_match_active_event_cases():
@@ -150,10 +148,8 @@ def test_duration_cache_must_match_active_event_cases():
         "c2": [("B", "2024-01-02 10:00")],
     })
     incomplete_durations = store.case_durations.iloc[[0]].reset_index(drop=True)
-    invalid_store = EventStore(store.events, incomplete_durations, store.metadata)
-
-    with pytest.raises(ValueError, match="does not match active events"):
-        run_11_7(invalid_store)
+    with pytest.raises(ValueError, match="match active event cases"):
+        EventStore(store.events, incomplete_durations, store.metadata)
 
 
 def test_contains_evidence_keeps_one_event_per_selected_case():

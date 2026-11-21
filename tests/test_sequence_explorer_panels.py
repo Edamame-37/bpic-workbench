@@ -118,3 +118,21 @@ def test_sequence_panel_wires_into_explorer():
     panel.open_button.click()
     assert explorer.current_case == "c4"
     assert explorer.model.frame()["_highlight"].tolist() == [True, True]
+
+
+def test_sequence_and_explorer_preserve_string_row_ids():
+    store = build_store({"c1": ["O_Cancelled", "O_Accepted"]})
+    events = store.events.copy()
+    events["_row_id"] = ["cancel-A", "accept-B"]
+    store = type(store)(events, store.case_durations, store.metadata)
+    panel, explorer = SequencePanel(), CaseExplorerPanel()
+    panel.set_store(store)
+    explorer.set_store(store)
+    panel.open_case_requested.connect(explorer.open_case)
+
+    panel.run()
+    panel.table.selectRow(0)
+    panel.open_button.click()
+
+    assert explorer.current_case == "c1"
+    assert explorer.model.frame()["_highlight"].tolist() == [True, True]

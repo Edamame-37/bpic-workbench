@@ -181,7 +181,11 @@ class CaseExplorerPanel(QWidget):
             self.status.setText(f"{len(self._case_ids):,} case tersedia.")
         self._refresh_case_list()
 
-    def open_case(self, case_id: str, highlight_row_ids: list[int] | None = None) -> None:
+    def open_case(
+        self,
+        case_id: str,
+        highlight_row_ids: list[object] | None = None,
+    ) -> None:
         """Tampilkan seluruh event case; sorot ``_row_id`` pembukti bila ada."""
         if self._store is None:
             self.status.setText("Impor file XES terlebih dahulu.")
@@ -208,7 +212,10 @@ class CaseExplorerPanel(QWidget):
 
     # ---- internal -------------------------------------------------------
     @staticmethod
-    def _describe_highlights(trace: pd.DataFrame, wanted: list[int] | None) -> str:
+    def _describe_highlights(
+        trace: pd.DataFrame,
+        wanted: list[object] | None,
+    ) -> str:
         if not wanted:
             return ""
         marked = trace[trace[HIGHLIGHT_COLUMN]]
@@ -217,7 +224,7 @@ class CaseExplorerPanel(QWidget):
             for _, r in marked.iterrows()
         )
         text = f"Event pembukti disorot ({len(marked)}): {steps}"
-        lost = len({int(x) for x in wanted}) - len(marked)
+        lost = len(set(wanted)) - len(marked)
         if lost > 0:
             text += f"  | PERINGATAN: {lost} row ID bukti tidak ada di case ini."
         return text

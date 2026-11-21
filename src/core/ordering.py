@@ -83,10 +83,10 @@ def eventually_follows_pairs(
     evidence = pd.DataFrame(
         {
             "case_id": chosen[CASE_ID_COLUMN].astype(str),
-            "cancel_row_id": chosen[f"{ROW_ID_COLUMN}_a"].astype("int64"),
+            "cancel_row_id": chosen[f"{ROW_ID_COLUMN}_a"],
             "cancel_position": chosen[f"{TRACE_POSITION_COLUMN}_a"].astype("int64"),
             "cancel_timestamp": chosen[f"{TIMESTAMP_COLUMN}_a"],
-            "accept_row_id": chosen[f"{ROW_ID_COLUMN}_b"].astype("int64"),
+            "accept_row_id": chosen[f"{ROW_ID_COLUMN}_b"],
             "accept_position": chosen[f"{TRACE_POSITION_COLUMN}_b"].astype("int64"),
             "accept_timestamp": chosen[f"{TIMESTAMP_COLUMN}_b"],
         }
@@ -106,7 +106,7 @@ def build_case_index(events: pd.DataFrame) -> dict[str, np.ndarray]:
 def get_case_trace(
     events: pd.DataFrame,
     case_id: str,
-    highlight_row_ids: list[int] | set[int] | None = None,
+    highlight_row_ids: list[object] | set[object] | None = None,
     case_index: dict[str, np.ndarray] | None = None,
 ) -> pd.DataFrame:
     """Seluruh event satu case, urut ``_trace_pos``, plus kolom ``_highlight``.
@@ -120,8 +120,8 @@ def get_case_trace(
     else:
         trace = events[events[CASE_ID_COLUMN].astype(str) == key]
     trace = trace.sort_values(TRACE_POSITION_COLUMN, kind="stable").reset_index(drop=True)
-    wanted = {int(x) for x in (highlight_row_ids or [])}
-    trace[HIGHLIGHT_COLUMN] = trace[ROW_ID_COLUMN].astype("int64").isin(wanted)
+    wanted = set(highlight_row_ids or [])
+    trace[HIGHLIGHT_COLUMN] = trace[ROW_ID_COLUMN].isin(wanted)
     return trace
 
 

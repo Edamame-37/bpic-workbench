@@ -227,5 +227,6 @@ class SequencePanel(QWidget):
         row = self._selected_row()
         if row is not None:
             self.open_case_requested.emit(
-                str(row["case_id"]), [int(row["cancel_row_id"]), int(row["accept_row_id"])]
+                str(row["case_id"]),
+                [row["cancel_row_id"], row["accept_row_id"]],
             )
