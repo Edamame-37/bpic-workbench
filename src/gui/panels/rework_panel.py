@@ -332,6 +332,22 @@ class ReworkPanel(QWidget):
             if generation == self._generation:
                 self._on_error(error)
 
+    def reset_results(self) -> None:
+        """Clear analysis output while preserving the active store and target."""
+
+        self._generation += 1
+        self._running = False
+        self._results = []
+        self.page15.clear_result()
+        self.page18.clear_result()
+        self.run_btn.setEnabled(self._store is not None)
+        self.info.setText(
+            "Impor event log terlebih dahulu."
+            if self._store is None
+            else "Hasil di-reset. Siap dijalankan ulang."
+        )
+        self.results_changed.emit()
+
     def _on_done(self, results: list[AnalysisResult]) -> None:
         self._running = False
         self.run_btn.setEnabled(self._store is not None)

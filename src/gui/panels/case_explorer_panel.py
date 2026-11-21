@@ -210,6 +210,15 @@ class CaseExplorerPanel(QWidget):
         if len(first):
             self.table.scrollTo(self.model.index(int(first[0]), 0))
 
+    def clear_selection(self) -> None:
+        """Clear the displayed trace without rebuilding the active case index."""
+
+        self.current_case = None
+        self.model.set_frame(pd.DataFrame())
+        self.info.setText("Belum ada case dipilih.")
+        self.evidence_info.clear()
+        self.case_list.clearSelection()
+
     # ---- internal -------------------------------------------------------
     @staticmethod
     def _describe_highlights(

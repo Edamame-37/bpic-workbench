@@ -112,6 +112,11 @@ class SequencePanel(QWidget):
         self._store = store
         self.reset()
 
+    def results(self) -> list[AnalysisResult]:
+        """Return the current result using the shared export-panel contract."""
+
+        return [] if self.result is None else [self.result]
+
     def run(self) -> None:
         if self._running:
             return

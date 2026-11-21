@@ -3,9 +3,11 @@
 from PySide6.QtWidgets import QApplication
 
 from src.gui.main_window import APPLICATION_TITLE, NAVIGATION_AREAS, MainWindow
+from src.gui.panels.about_panel import AboutPanel
 from src.gui.panels.case_explorer_panel import CaseExplorerPanel
 from src.gui.panels.dataset_panel import DatasetPanel
 from src.gui.panels.exercise_11_7_panel import Exercise117Panel
+from src.gui.panels.export_panel import ExportPanel
 from src.gui.panels.overview_panel import OverviewPanel
 from src.gui.panels.rework_panel import ReworkPanel
 from src.gui.panels.sequence_panel import SequencePanel
@@ -36,6 +38,8 @@ def test_main_window_registers_all_initial_areas() -> None:
         assert isinstance(window.rework_panel, ReworkPanel)
         assert isinstance(window.sequence_panel, SequencePanel)
         assert isinstance(window.case_explorer_panel, CaseExplorerPanel)
+        assert isinstance(window.export_panel, ExportPanel)
+        assert isinstance(window.about_panel, AboutPanel)
     finally:
         window.close()
 

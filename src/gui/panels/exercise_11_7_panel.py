@@ -101,6 +101,7 @@ class Exercise117Panel(QWidget):
     """Present five Exercise 11.7 results from the active EventStore."""
 
     open_case_requested = Signal(str, list)
+    results_changed = Signal()
 
     def __init__(self, runner: Runner | None = None) -> None:
         super().__init__()
@@ -244,6 +245,7 @@ class Exercise117Panel(QWidget):
             if self._store is None
             else "Siap dijalankan."
         )
+        self.results_changed.emit()
 
     def _on_done(self, results: list[AnalysisResult]) -> None:
         self._running = False
@@ -273,6 +275,7 @@ class Exercise117Panel(QWidget):
 
         unavailable = [result for result in results if result.status != "ok"]
         self.status.setText(unavailable[0].notes if unavailable else "Selesai.")
+        self.results_changed.emit()
 
         selected_row = next(
             (
@@ -294,6 +297,7 @@ class Exercise117Panel(QWidget):
         self.rule.clear()
         self.open_button.setEnabled(False)
         self.status.setText(f"Analisis gagal: {error}")
+        self.results_changed.emit()
 
     def _show_selected(self) -> None:
         row = self.summary.currentRow()
