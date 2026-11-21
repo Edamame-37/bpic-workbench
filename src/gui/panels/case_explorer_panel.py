@@ -116,7 +116,7 @@ def format_duration(store: EventStore, case_id: str) -> str:
 class CaseExplorerPanel(QWidget):
     case_changed = Signal(object)
 
-    """Penelusuran case lintas latihan."""
+    """Penelusuran case lintas hasil analisis."""
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -161,7 +161,7 @@ class CaseExplorerPanel(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
-        layout.addWidget(PageHeader("Case Explorer", "Telusuri trace lengkap dan bukti setiap case."))
+        layout.addWidget(PageHeader("Penelusuran Kasus", "Telusuri trace lengkap dan bukti setiap case."))
         layout.addWidget(self.status)
         layout.addWidget(splitter)
 

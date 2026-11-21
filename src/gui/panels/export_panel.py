@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.core.event_store import EventStore
-from src.core.export import EXPECTED_EXERCISE_IDS, ExportPaths, export_results
+from src.core.export import EXPECTED_ANALYSIS_IDS, ExportPaths, export_results
 from src.core.result import AnalysisResult
 from src.gui.common import (
     MetricCard,
@@ -78,9 +78,9 @@ class ExportPanel(QWidget):
         path_controls.addWidget(self.choose_button)
         path_controls.addWidget(self.export_button)
 
-        self.summary = QTableWidget(len(EXPECTED_EXERCISE_IDS), 4)
+        self.summary = QTableWidget(len(EXPECTED_ANALYSIS_IDS), 4)
         self.summary.setHorizontalHeaderLabels(
-            ["Exercise", "Status", "Count", "Denominator"]
+            ["Kode Analisis", "Status", "Count", "Denominator"]
         )
         self.summary.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
@@ -97,7 +97,7 @@ class ExportPanel(QWidget):
 
         result_card = SectionCard(
             "Status hasil analisis",
-            "Semua exercise harus tersedia sebelum CSV dapat ditulis.",
+            "Semua hasil analisis harus tersedia sebelum CSV dapat ditulis.",
         )
         result_card.body.addWidget(self.summary)
 
@@ -216,16 +216,16 @@ class ExportPanel(QWidget):
 
     def _is_complete(self) -> bool:
         ids = [result.exercise_id for result in self._results]
-        return len(ids) == len(EXPECTED_EXERCISE_IDS) and set(ids) == set(
-            EXPECTED_EXERCISE_IDS
+        return len(ids) == len(EXPECTED_ANALYSIS_IDS) and set(ids) == set(
+            EXPECTED_ANALYSIS_IDS
         )
 
     def _refresh(self) -> None:
         by_id = {result.exercise_id: result for result in self._results}
-        for row, exercise_id in enumerate(EXPECTED_EXERCISE_IDS):
-            result = by_id.get(exercise_id)
+        for row, analysis_id in enumerate(EXPECTED_ANALYSIS_IDS):
+            result = by_id.get(analysis_id)
             values = (
-                exercise_id,
+                analysis_id,
                 result.status if result is not None else "belum dijalankan",
                 (
                     str(result.count)
@@ -237,7 +237,7 @@ class ExportPanel(QWidget):
             for column, value in enumerate(values):
                 self.summary.setItem(row, column, QTableWidgetItem(value))
 
-        available = len(set(by_id).intersection(EXPECTED_EXERCISE_IDS))
+        available = len(set(by_id).intersection(EXPECTED_ANALYSIS_IDS))
         self.readiness.setText(f"Hasil tersedia: {available}/8")
         if self._store is None:
             self.dataset.setText("Dataset: belum ada")

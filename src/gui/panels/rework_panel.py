@@ -1,4 +1,4 @@
-"""A3 - Panel Rework: Exercise 11.15 (Repeated Complete) dan 11.18 (Same Resource Complete).
+"""Panel analisis Repeated Complete dan Same Resource Complete.
 
 Hanya menampilkan hasil ringkas + evidence per case (bukan data mentah log).
 Integrasi: ``set_store(store)`` setelah impor; sinyal ``open_case_requested``
@@ -253,11 +253,11 @@ class ReworkPanel(QWidget):
         self.page15 = _ExercisePage("11.15")
         self.page18 = _ExercisePage("11.18")
         tabs = QTabWidget()
-        tabs.addTab(self.page15, "11.15 Repeated Complete")
-        tabs.addTab(self.page18, "11.18 Same Resource Complete")
+        tabs.addTab(self.page15, "Repeated Complete")
+        tabs.addTab(self.page18, "Same Resource Complete")
 
         header = PageHeader(
-            "Rework 11.15 / 11.18",
+            "Analisis Rework",
             "Temukan aktivitas complete berulang dan pengulangan oleh resource yang sama.",
         )
         target_card = SectionCard(
@@ -327,7 +327,7 @@ class ReworkPanel(QWidget):
 
         self._running = True
         self.run_btn.setEnabled(False)
-        self.info.setText("Menghitung analisis 11.15 dan 11.18...")
+        self.info.setText("Menghitung Repeated Complete dan Same Resource Complete...")
 
         def job() -> list[AnalysisResult]:
             try:
@@ -384,7 +384,7 @@ class ReworkPanel(QWidget):
         self.page15.show_result(results[0])
         self.page18.show_result(results[1])
         self._results = results
-        self.info.setText("Analisis 11.15 dan 11.18 selesai.")
+        self.info.setText("Analisis rework selesai.")
         self.results_changed.emit()
 
     def _on_error(self, error: Exception) -> None:

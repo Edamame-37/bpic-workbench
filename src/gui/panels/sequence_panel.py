@@ -1,4 +1,4 @@
-"""A4 - Panel Exercise 11.22 (eventually follows O_Cancelled -> O_Accepted).
+"""Panel urutan O_Cancelled yang kemudian diikuti O_Accepted.
 
 Kontrak:
     panel.set_store(store)                  # dataset baru / None
@@ -58,7 +58,7 @@ class SequencePanel(QWidget):
         self.result: AnalysisResult | None = None
 
         self.status = QLabel("Belum ada dataset aktif.")
-        self.run_button = PrimaryButton("Jalankan 11.22", "rerun")
+        self.run_button = PrimaryButton("Jalankan Analisis", "rerun")
         self.reset_button = SecondaryButton("Reset hasil", "reset")
 
         self.count_metric = MetricCard("Case memenuhi", "Count: N/A")
@@ -89,7 +89,7 @@ class SequencePanel(QWidget):
         self.open_button.setEnabled(False)
 
         header = PageHeader(
-            "Exercise 11.22",
+            "Urutan Cancel-Accept",
             "Periksa apakah O_Cancelled pada sebuah case akhirnya diikuti O_Accepted.",
         )
         header.actions.addWidget(self.reset_button)

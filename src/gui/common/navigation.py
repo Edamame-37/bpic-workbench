@@ -35,10 +35,10 @@ class NavigationRoute:
 NAVIGATION_ROUTES: Final[tuple[NavigationRoute, ...]] = (
     NavigationRoute("dataset", "Dataset & Status", "WORKSPACE", "Ctrl+1", "Import and validate an XES event log", "dataset"),
     NavigationRoute("overview", "Overview", "WORKSPACE", "Ctrl+2", "Inspect KPIs, activities, and cases", "overview"),
-    NavigationRoute("exercise_11_7", "Exercise 11.7", "ANALYSES", "Ctrl+3", "Review cycle time and case outcomes", "analytics"),
-    NavigationRoute("rework", "Rework 11.15 / 11.18", "ANALYSES", "Ctrl+4", "Analyze repeated complete activities", "rework"),
-    NavigationRoute("sequence", "Exercise 11.22", "ANALYSES", "Ctrl+5", "Inspect eventually-follows evidence", "sequence"),
-    NavigationRoute("explorer", "Case Explorer", "INVESTIGATION", "Ctrl+6", "Open complete traces and evidence", "explorer"),
+    NavigationRoute("exercise_11_7", "Outcome Kasus", "ANALYSES", "Ctrl+3", "Analisis cycle time dan outcome setiap kasus", "analytics"),
+    NavigationRoute("rework", "Analisis Rework", "ANALYSES", "Ctrl+4", "Analisis aktivitas complete yang berulang", "rework"),
+    NavigationRoute("sequence", "Urutan Cancel-Accept", "ANALYSES", "Ctrl+5", "Periksa urutan event cancel dan accept", "sequence"),
+    NavigationRoute("explorer", "Penelusuran Kasus", "INVESTIGATION", "Ctrl+6", "Telusuri trace lengkap dan event pembukti", "explorer"),
     NavigationRoute("export", "Export", "OUTPUT", "Ctrl+7", "Write summary, cases, and evidence CSV", "export"),
     NavigationRoute("about", "About", "SYSTEM", "Ctrl+8 / F1", "View versions and reproducibility data", "info"),
 )

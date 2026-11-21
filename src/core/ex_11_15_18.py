@@ -1,4 +1,4 @@
-"""A3 - Exercise 11.15 dan 11.18 -> AnalysisResult.
+"""Repeated Complete dan Same Resource Complete menghasilkan AnalysisResult.
 
 Satuan hasil = CASE (bukan event). Hanya event ``lifecycle:transition == complete``
 (terverifikasi, dinormalisasi) yang dihitung.

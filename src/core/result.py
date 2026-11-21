@@ -1,4 +1,4 @@
-"""Shared result contract for exercise panels and CSV export."""
+"""Shared result contract for analysis panels and CSV export."""
 
 from dataclasses import dataclass
 from typing import Final, Literal
@@ -11,7 +11,7 @@ VALID_STATUSES: Final = frozenset({"ok", "unavailable", "error"})
 
 @dataclass(slots=True)
 class AnalysisResult:
-    """Result of one BPIC17 exercise evaluated against the active log."""
+    """Result of one BPIC17 analysis evaluated against the active log."""
 
     exercise_id: str
     rule_description: str

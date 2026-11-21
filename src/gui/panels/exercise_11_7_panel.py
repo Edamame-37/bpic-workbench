@@ -1,4 +1,4 @@
-"""GUI panel for BPIC17 Exercise 11.7 A-E."""
+"""GUI panel for case outcome and cycle-time analysis."""
 
 from collections.abc import Callable, Iterable
 
@@ -97,7 +97,7 @@ class CaseListModel(QAbstractTableModel):
 
 
 class Exercise117Panel(QWidget):
-    """Present five Exercise 11.7 results from the active EventStore."""
+    """Present case outcome and cycle-time results from the active EventStore."""
 
     open_case_requested = Signal(str, list)
     results_changed = Signal()
@@ -112,12 +112,12 @@ class Exercise117Panel(QWidget):
         self._running = False
 
         self.status = QLabel("Belum ada dataset aktif.")
-        self.run_button = PrimaryButton("Jalankan 11.7 A-E", "rerun")
+        self.run_button = PrimaryButton("Jalankan Analisis", "rerun")
         self.reset_button = SecondaryButton("Reset hasil", "reset")
 
         self.summary = QTableWidget(len(QUESTIONS), 5)
         self.summary.setHorizontalHeaderLabels(
-            ["Kode", "Pertanyaan", "Jumlah case", "Mean (hari)", "Denominator"]
+            ["Kode Analisis", "Metrik", "Jumlah case", "Mean (hari)", "Denominator"]
         )
 
         self.rule = QLabel("")
@@ -147,7 +147,7 @@ class Exercise117Panel(QWidget):
         self.open_button.setEnabled(False)
 
         header = PageHeader(
-            "Exercise 11.7",
+            "Outcome Kasus",
             "Hitung populasi case, cycle time, dan outcome proses secara konsisten.",
         )
         header.actions.addWidget(self.reset_button)

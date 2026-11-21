@@ -11,7 +11,7 @@ import pandas as pd
 from src.core.event_store import CASE_ID_COLUMN
 from src.core.result import AnalysisResult
 
-EXPECTED_EXERCISE_IDS: Final[tuple[str, ...]] = (
+EXPECTED_ANALYSIS_IDS: Final[tuple[str, ...]] = (
     "11.7 A",
     "11.7 B",
     "11.7 C",
@@ -23,7 +23,7 @@ EXPECTED_EXERCISE_IDS: Final[tuple[str, ...]] = (
 )
 
 SUMMARY_COLUMNS: Final[tuple[str, ...]] = (
-    "exercise_id",
+    "analysis_id",
     "rule_description",
     "count",
     "denominator",
@@ -32,9 +32,9 @@ SUMMARY_COLUMNS: Final[tuple[str, ...]] = (
     "status",
     "notes",
 )
-SELECTED_CASE_COLUMNS: Final[tuple[str, ...]] = ("exercise_id", "case_id")
+SELECTED_CASE_COLUMNS: Final[tuple[str, ...]] = ("analysis_id", "case_id")
 EVIDENCE_PREFIX_COLUMNS: Final[tuple[str, ...]] = (
-    "exercise_id",
+    "analysis_id",
     "case_id",
     "evidence_type",
 )
@@ -63,9 +63,9 @@ def _ordered_results(results: Iterable[AnalysisResult]) -> list[AnalysisResult]:
 
     if duplicates:
         names = ", ".join(sorted(duplicates))
-        raise ValueError(f"Duplicate exercise results: {names}")
+        raise ValueError(f"Duplicate analysis results: {names}")
 
-    expected = set(EXPECTED_EXERCISE_IDS)
+    expected = set(EXPECTED_ANALYSIS_IDS)
     actual = set(by_id)
     missing = sorted(expected - actual)
     unexpected = sorted(actual - expected)
@@ -75,9 +75,9 @@ def _ordered_results(results: Iterable[AnalysisResult]) -> list[AnalysisResult]:
             details.append(f"missing={missing}")
         if unexpected:
             details.append(f"unexpected={unexpected}")
-        raise ValueError("Expected exactly eight exercise results: " + "; ".join(details))
+        raise ValueError("Expected exactly eight analysis results: " + "; ".join(details))
 
-    return [by_id[exercise_id] for exercise_id in EXPECTED_EXERCISE_IDS]
+    return [by_id[analysis_id] for analysis_id in EXPECTED_ANALYSIS_IDS]
 
 
 def _summary_frame(results: list[AnalysisResult]) -> pd.DataFrame:
@@ -86,7 +86,7 @@ def _summary_frame(results: list[AnalysisResult]) -> pd.DataFrame:
         available = result.status == "ok"
         rows.append(
             {
-                "exercise_id": result.exercise_id,
+                "analysis_id": result.exercise_id,
                 "rule_description": result.rule_description,
                 "count": result.count if available else "",
                 "denominator": result.denominator,
@@ -101,14 +101,14 @@ def _summary_frame(results: list[AnalysisResult]) -> pd.DataFrame:
 
 def _selected_cases_frame(results: list[AnalysisResult]) -> pd.DataFrame:
     rows = [
-        {"exercise_id": result.exercise_id, "case_id": str(case_id)}
+        {"analysis_id": result.exercise_id, "case_id": str(case_id)}
         for result in results
         for case_id in result.case_ids
     ]
     return pd.DataFrame(rows, columns=list(SELECTED_CASE_COLUMNS))
 
 
-def _evidence_type(exercise_id: str) -> str:
+def _evidence_type(analysis_id: str) -> str:
     return {
         "11.7 C": "matching_event",
         "11.7 D": "matching_event",
@@ -116,7 +116,7 @@ def _evidence_type(exercise_id: str) -> str:
         "11.15": "repeated_complete",
         "11.18": "same_resource_complete",
         "11.22": "eventually_follows_pair",
-    }.get(exercise_id, "event")
+    }.get(analysis_id, "event")
 
 
 def _normalise_evidence(result: AnalysisResult) -> pd.DataFrame | None:
@@ -133,7 +133,7 @@ def _normalise_evidence(result: AnalysisResult) -> pd.DataFrame | None:
         )
 
     frame["case_id"] = frame["case_id"].astype("string")
-    frame.insert(0, "exercise_id", result.exercise_id)
+    frame.insert(0, "analysis_id", result.exercise_id)
     frame.insert(2, "evidence_type", _evidence_type(result.exercise_id))
     return frame
 

@@ -1,4 +1,4 @@
-"""A4 - Exercise 11.22: O_Cancelled yang kemudian diikuti O_Accepted.
+"""Analisis O_Cancelled yang kemudian diikuti O_Accepted.
 
 count       = case unik dengan O_Cancelled di posisi i dan O_Accepted di j > i
 denominator = seluruh case log aktif (sebelum filter)
