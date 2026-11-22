@@ -31,13 +31,14 @@ python scripts\capture_demo_screenshots.py
 
 ## 3. Pembagian anggota
 
-| Anggota | Bagian utama | Halaman | Estimasi |
-|---|---|---|---:|
-| Anggota 1 | Import, validasi, dan ringkasan dataset | Dataset & Status, Overview | 2 menit 30 detik |
-| Anggota 2 | Cycle time dan outcome case | Outcome Kasus | 1 menit 30 detik |
-| Anggota 3 | Analisis aktivitas complete berulang | Analisis Rework | 2 menit |
-| Anggota 4 | Urutan event dan penelusuran evidence | Urutan Cancel-Accept, Penelusuran Kasus | 2 menit 30 detik |
-| Anggota 5 | Pembukaan, integrasi, export, dan penutup | Navigation Drawer, Export, About | 2 menit 45 detik |
+
+| Anggota   | Bagian utama                              | Halaman                                 |         Estimasi |
+| --------- | ----------------------------------------- | --------------------------------------- | ---------------: |
+| Anggota 1 | Import, validasi, dan ringkasan dataset   | Dataset & Status, Overview              | 2 menit 30 detik |
+| Anggota 2 | Cycle time dan outcome case               | Outcome Kasus                           | 1 menit 30 detik |
+| Anggota 3 | Analisis aktivitas complete berulang      | Analisis Rework                         |          2 menit |
+| Anggota 4 | Urutan event dan penelusuran evidence     | Urutan Cancel-Accept, Penelusuran Kasus | 2 menit 30 detik |
+| Anggota 5 | Pembukaan, integrasi, export, dan penutup | Navigation Drawer, Export, About        | 2 menit 45 detik |
 
 Estimasi total demo: 11 menit 15 detik.
 
@@ -174,13 +175,14 @@ Aksi yang dilakukan:
 
 Hasil pada dataset screenshot:
 
-| Metrik | Hasil |
-|---|---:|
-| Seluruh case | 4 |
-| Mean cycle time | 0,4167 hari |
-| Accepted | 2 |
-| Refused | 1 |
-| Berakhir cancelled | 1 |
+
+| Metrik             |       Hasil |
+| ------------------ | ----------: |
+| Seluruh case       |           4 |
+| Mean cycle time    | 0,4167 hari |
+| Accepted           |           2 |
+| Refused            |           1 |
+| Berakhir cancelled |           1 |
 
 Transisi ke Anggota 3:
 
@@ -329,11 +331,12 @@ Aksi yang dilakukan:
 
 Isi file export:
 
-| File | Isi utama |
-|---|---|
-| `summary.csv` | kode analisis, rule, count, denominator, mean, percentage, status, notes |
-| `selected_cases.csv` | kode analisis dan case terpilih |
-| `evidence.csv` | row ID, posisi trace, timestamp, lifecycle, resource, dan pasangan event |
+
+| File                 | Isi utama                                                                |
+| -------------------- | ------------------------------------------------------------------------ |
+| `summary.csv`        | kode analisis, rule, count, denominator, mean, percentage, status, notes |
+| `selected_cases.csv` | kode analisis dan case terpilih                                          |
+| `evidence.csv`       | row ID, posisi trace, timestamp, lifecycle, resource, dan pasangan event |
 
 ### Anggota 5 — Halaman About
 
@@ -359,17 +362,17 @@ Penutup demo:
 
 Gunakan checklist berikut sebelum presentasi selesai:
 
-- [ ] Dataset berhasil dimuat tanpa error.
-- [ ] Nama file, case, event, dan SHA-256 sudah diperlihatkan.
-- [ ] Overview sudah menampilkan KPI dan tabel.
-- [ ] Outcome Kasus menghasilkan lima hasil.
-- [ ] Repeated Complete dan Same Resource Complete sudah dibandingkan.
-- [ ] Urutan Cancel-Accept menampilkan pasangan evidence.
-- [ ] Penelusuran Kasus menampilkan highlight event.
-- [ ] Export menunjukkan `8/8` hasil tersedia.
-- [ ] Tiga file CSV berhasil dibuat.
-- [ ] About menampilkan environment dan metadata dataset.
-- [ ] Setiap anggota sudah menyampaikan bagian yang ditugaskan.
+- [ ]  Dataset berhasil dimuat tanpa error.
+- [ ]  Nama file, case, event, dan SHA-256 sudah diperlihatkan.
+- [ ]  Overview sudah menampilkan KPI dan tabel.
+- [ ]  Outcome Kasus menghasilkan lima hasil.
+- [ ]  Repeated Complete dan Same Resource Complete sudah dibandingkan.
+- [ ]  Urutan Cancel-Accept menampilkan pasangan evidence.
+- [ ]  Penelusuran Kasus menampilkan highlight event.
+- [ ]  Export menunjukkan `8/8` hasil tersedia.
+- [ ]  Tiga file CSV berhasil dibuat.
+- [ ]  About menampilkan environment dan metadata dataset.
+- [ ]  Setiap anggota sudah menyampaikan bagian yang ditugaskan.
 
 ## 11. Catatan untuk dataset final
 
