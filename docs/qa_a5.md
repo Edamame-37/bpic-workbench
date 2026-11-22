@@ -20,7 +20,7 @@
 | Export GUI + smoke | export panel, application smoke | 13 passed |
 | Workspace navigation dan UI components | overlay drawer, backdrop, Escape, collapsible groups, history, shortcuts, badges, cards, dan vector icons | 12 passed |
 | Integration | import → 8 hasil → evidence → CSV → reset/rerun | 2 passed, 1 warning |
-| Regression terkini | `python manage.py test -q` | 149 passed, 1 warning; run final 9,43 detik |
+| Regression terkini | `python manage.py test -q` | 150 passed, 1 warning; dua run final berturut-turut 10,91 dan 10,60 detik |
 | Clean install baseline A5 | venv Python 3.13 baru + `pip install -r requirements.txt` + full suite sebelum navigation shell | 136 passed, 1 warning; 12,70 detik |
 
 Warning tunggal berasal dari PM4Py karena `r4pm` tidak dipasang. Pesan PM4Py menyatakan `rustxes` tetap didukung sebagai fallback; import XES pada test berhasil.
